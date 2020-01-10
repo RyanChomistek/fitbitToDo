@@ -26,5 +26,8 @@
   "scripts": {
     "build": "fitbit-build",
     "debug": "fitbit"
+  },
+  "dependencies": {
+    "msal": "^1.2.0"
   }
 }

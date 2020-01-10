@@ -1,27 +1,32 @@
-import { CLIENT_ID, CLIENT_SECRET } from "../common/constants";
+import { CLIENT_ID, SCOPES, AUTHORIZE_URL } from "../common/constants";
 
 function mySettings(props) {
-  return (
-    <Page>
-      <Section
-        title={<Text bold align="center">Fitbit Account</Text>}>
-        <Oauth
-          settingsKey="oauth"
-          title="OAuth Login"
-          label="OAuth"
-          status="Login"
-          authorizeUrl="https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
-          clientId={ CLIENT_ID }
-          scope="openid, profile, User.Read, Tasks.Read"
-          //scope="openid profile User.Read Mail.Read"
-          onReturn={ async (data) => {
-            props.settingsStorage.setItem("excode", data.code)
-          }}
-          
-        />
-      </Section>
-    </Page>
-  );
+	return (
+		<Page>
+			<Section
+				title={<Text bold align="center">Fitbit Account</Text>}>
+				<Oauth
+					settingsKey="oauth"
+					title="OAuth Login"
+					label="OAuth"
+					status="Login"
+					authorizeUrl={AUTHORIZE_URL}
+					clientId={ CLIENT_ID }
+					scope={SCOPES}
+					//scope="openid profile User.Read Mail.Read"
+					onReturn={ async (data) => { 
+						console.log(JSON.stringify(data));
+						props.settingsStorage.setItem("excode", data.code) 
+					}}
+				/>
+
+			<Button
+				label="Button"
+				onClick={() => props.settingsStorage.setItem("refresh_token", 'true')}
+			/>
+			</Section>
+		</Page>
+	);
 }
 
 
