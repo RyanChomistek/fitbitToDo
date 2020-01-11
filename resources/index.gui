@@ -7,6 +7,14 @@
       <rect id="touch-me" pointer-events="all" x="0" y="0" width="100%"
             height="100%-2" opacity="0" />
     </symbol>
+
+    <symbol id="checkbox-tile-item" href="#tile-list-item" focusable="false"
+            pointer-events="none" system-events="all" display="none">
+      <use id="item0" href="#checkbox-tile">
+        <set href="header/text" attributeName="text-buffer" to="Checkbox Item" />
+      </use>
+    </symbol>
+
   </defs>
 
   <svg id="loadingScreen">
@@ -14,7 +22,7 @@
       <use id="spinner" href="#spinner" />
     </svg>
   </svg>
-
+  
   <svg id="TaskFolderScreen">
     <use id="my-list" href="#tile-list">
       <var id="virtual" value="1" />
@@ -32,6 +40,27 @@
         <use id="my-pool[8]" href="#my-tile-item" class="tile-list-item" />
         <use id="my-pool[9]" href="#my-tile-item" class="tile-list-item" />
       </use>
+    </use>
+  </svg>
+
+  <svg id="TasksScreen">
+    <use id="checkbox-list" href="#tile-list">
+      <var id="virtual" value="1" />
+      <var id="separator-height-bottom" value="2" />
+
+      <use id="checkbox-pool" href="#tile-list-pool">
+        <use id="checkbox-pool[0]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[1]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[2]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[3]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[4]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[5]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[6]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[7]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[8]" href="#checkbox-tile-item" class="tile-list-item" />
+        <use id="checkbox-pool[9]" href="#checkbox-tile-item" class="tile-list-item" />
+      </use>
+
     </use>
   </svg>
 

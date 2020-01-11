@@ -56,7 +56,7 @@ returns an object that knows how to get tasks
 */
 function TasksInFolder(user, taskFolderId)
 {
-    return CreateCollection(user, `taskfolders(\'${taskFolder.id}\')/tasks`);
+    return CreateCollection(user, (`taskfolders(\'${taskFolderId}\')/tasks`));
 }
 
 /*
@@ -115,7 +115,7 @@ async function GetFromApi(collection, skip = 0, top = 10)
     return await fetch(endpointUrl, getRequest).then(function(data){
 		return data.json();
 	}).then(function(data){
-        console.log('data len : ' + JSON.stringify(data))
+        //console.log('data len : ' + JSON.stringify(data))
         collection.nextUrl = data['@odata.nextLink'];
 
         collection.HasUnsyncedData = data['value'].length > 0;

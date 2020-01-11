@@ -4,6 +4,7 @@ import { localStorage } from "local-storage";
 import { Login, GetUser } from "../companion/TaskApi";
 import { inbox, outbox } from "file-transfer";
 import { encode } from 'cbor';
+import { readFileSync } from 'fs';
 
 settingsStorage.onchange = function(evt) 
 {
@@ -33,8 +34,11 @@ async function processAllFiles() {
 	let file;
 	while ((file = await inbox.pop())) {
 		const fileName = file.name;
-		const payload = await file.text();
-		console.log(`file contents: ${fileName}`);
+		var payload = await file.text();
+
+		// I think this is a bug with the file transfer, it always prepends xq, so remove that
+		payload = payload.slice(2);
+		console.log(`file contents: ${fileName} ${payload}`);
 		if(fileName == 'RequestTasksInFolder')
 		{
 			OnRequestTasksInFolder(payload);
@@ -51,45 +55,18 @@ async function processAllFiles() {
 
 async function OnRequestTasksInFolder(folderId)
 {
-	// get the tasks
-	/*
-	GetUser().then(function(user){
-		user.TaskFolders().All().then(function(collection){
-			// find the folder
-			var found = false;
-			var folder;
-			for(folderIndex in collection.data)
-			{
-				if(collection.data[folderIndex].id == folderId)
-				{
-					folder = collection.data[folderIndex];
-					found = true;
-					break;
-				}
-			}
+	console.log(JSON.stringify(folderId))
 
-			// asked for a bad folder
-			if(!found)
-			{
-				return;
-			}
-
-
-		});
-	});
-	*/
-	
 	await GetUser().then(function(user){
 		user.TasksInFolder(folderId).All().then(function(collection){
-			console.log(collection);
-			/*
+			console.log(JSON.stringify(collection));
+			collection.taskFolderId = folderId;
 			outbox.enqueue("TaskCollection", encode(collection)).then((ft) => {
 				console.log(`Transfer of ${ft.name} successfully queued.`);
 			  })
 			  .catch((error) => {
 				console.log(`Failed to queue ${filename}: ${error}`);
 			  })
-			  */
 		});
 	});
 	
