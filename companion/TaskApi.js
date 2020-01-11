@@ -1,5 +1,6 @@
 import { GetToken, EnsureTokenState } from "../companion/Authentication.js";
 import { settingsStorage } from "settings";
+import { localStorage } from "local-storage";
 
 export async function GetUser()
 {
@@ -54,9 +55,13 @@ function Tasks(user)
 /*
 returns an object that knows how to get tasks
 */
-function TasksInFolder(user, taskFolderId)
+function TasksInFolder(user, hashedTaskFolderId)
 {
-    return CreateCollection(user, (`taskfolders(\'${taskFolderId}\')/tasks`));
+    var idHashMap = JSON.parse(localStorage.getItem("IdHashMap"));
+    //console.log(idHashMap)
+    var id = idHashMap[hashedTaskFolderId];
+    console.log('unhashed id = ' + id)
+    return CreateCollection(user, (`taskfolders(\'${id}\')/tasks`));
 }
 
 /*
@@ -86,6 +91,19 @@ async function All(collection, skip = 0, maxChunkSize=100)
     }
 
     return collection 
+}
+
+function hashString(string) {
+    var hash = 0;
+    if (string.length == 0) {
+        return hash;
+    }
+    for (var i = 0; i < string.length; i++) {
+        var char = string.charCodeAt(i);
+        hash = ((hash<<5)-hash)+char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash;
 }
 
 /*
@@ -119,11 +137,31 @@ async function GetFromApi(collection, skip = 0, top = 10)
         collection.nextUrl = data['@odata.nextLink'];
 
         collection.HasUnsyncedData = data['value'].length > 0;
+        var idHashMap = localStorage.getItem("IdHashMap");
+        if(idHashMap == null)
+        {
+            idHashMap = {};
+        }
+        else
+        {
+            //console.log(JSON.stringify(idHashMap))
+            idHashMap = JSON.parse(idHashMap);
+            //idHashMap = {};
+        }
+
         for(var valueIndex in data['value'])
         {
+            // Hash the id's because they are incredibly long and the device cant handle passing them back well
+            var id = data['value'][valueIndex].id;
+            var hashedId = hashString(id);
+            
+            idHashMap[hashedId] = id;
+            data['value'][valueIndex].id = hashedId;
+
             collection.data.push(data['value'][valueIndex]);
         }
 
+        localStorage.setItem("IdHashMap", JSON.stringify(idHashMap));
         return collection;
     });
 }

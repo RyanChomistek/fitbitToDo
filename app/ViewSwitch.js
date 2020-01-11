@@ -1,34 +1,67 @@
 import document from "document";
+import { me } from "appbit";
 
-let loadingScreen = document.getElementById("loadingScreen");
-let taskFolderScreen = document.getElementById("TaskFolderScreen");
-let tasksScreen = document.getElementById("TasksScreen");
+export let loadingScreen = document.getElementById("loadingScreen");
 let spinner = document.getElementById("spinner");
+loadingScreen.Enable = () => {EnableLoadingScreen()}
 
-EnableLoadingScreen();
+export let taskFolderScreen = document.getElementById("TaskFolderScreen");
+taskFolderScreen.Enable = () => {EnableTaskFolderScreen()}
 
-export function EnableLoadingScreen()
+export let tasksScreen = document.getElementById("TasksScreen");
+tasksScreen.Enable = () => {EnableTasksScreen()}
+
+loadingScreen.Enable();
+
+var ScreenStack = [];
+
+export function PushScreen(screen)
 {
+    DisableLoadingScreen();
     DisableTaskFolderScreen();
     DisableTasksScreen();
+
+    screen.Enable();
+    ScreenStack.push(screen);
+}
+
+export function PopScreen()
+{
+    DisableLoadingScreen();
+    DisableTaskFolderScreen();
+    DisableTasksScreen();
+    if(ScreenStack.length > 1)
+    {
+        ScreenStack.pop()
+        ScreenStack[ScreenStack.length - 1].Enable();
+    }
+    else
+    {
+        me.exit();
+    }
+}
+
+function EnableLoadingScreen()
+{
+    //DisableTaskFolderScreen();
+    //DisableTasksScreen();
     loadingScreen.style.display = "inline";
     spinner.state = "enabled";
 }
 
-export function EnableTaskFolderScreen()
+function EnableTaskFolderScreen()
 {
-    DisableLoadingScreen();
-    DisableTasksScreen();
+    //DisableLoadingScreen();
+    //DisableTasksScreen();
     taskFolderScreen.style.display = "inline";
 }
 
-export function EnableTasksScreen()
+function EnableTasksScreen()
 {
-    DisableLoadingScreen()
-    DisableTaskFolderScreen()
+    //DisableLoadingScreen()
+    //DisableTaskFolderScreen()
     tasksScreen.style.display = "inline";
 }
-
 
 function DisableLoadingScreen()
 {

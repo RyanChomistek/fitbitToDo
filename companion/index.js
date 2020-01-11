@@ -1,10 +1,12 @@
 // companion/index.js
 import { settingsStorage } from "settings";
 import { localStorage } from "local-storage";
-import { Login, GetUser } from "../companion/TaskApi";
 import { inbox, outbox } from "file-transfer";
 import { encode } from 'cbor';
 import { readFileSync } from 'fs';
+
+import { Login, GetUser } from "../companion/TaskApi";
+import { RequestTypes } from '../common/constants'
 
 settingsStorage.onchange = function(evt) 
 {
@@ -13,6 +15,7 @@ settingsStorage.onchange = function(evt)
 		Login(evt);
 		GetUser().then(function(user){
 			user.TaskFolders().All().then(function(collection){
+				collection.count = collection.data.length;
 				localStorage.setItem("TaskFoldersCollection", collection);
 
 				outbox.enqueue("TaskFoldersCollection", encode(collection)).then((ft) => {
@@ -31,27 +34,66 @@ settingsStorage.onchange = function(evt)
 
 // wait for file input from device
 async function processAllFiles() {
+	console.log('process all files')
 	let file;
 	while ((file = await inbox.pop())) {
 		const fileName = file.name;
+		console.log('processing file' + fileName);
 		var payload = await file.text();
 
-		// I think this is a bug with the file transfer, it always prepends xq, so remove that
-		payload = payload.slice(2);
+		// I think this is a bug with the file transfer, it always prepends random characters, so find the first bracket
+		payload = payload.slice(payload.indexOf('{'));
 		console.log(`file contents: ${fileName} ${payload}`);
 		if(fileName == 'RequestTasksInFolder')
 		{
-			OnRequestTasksInFolder(payload);
+			HandleApiRequestFromDevice(payload);
+		}
+
+		if(fileName == "RequestTaskFolders")
+		{
+			HandleApiRequestFromDevice(payload);
 		}
 	}
  }
  
- // Process new files as they are received
- inbox.addEventListener("newfile", processAllFiles);
+// Process new files as they are received
+inbox.addEventListener("newfile", processAllFiles);
  
- // Also process any files that arrived when the companion wasn’t running
- processAllFiles()
+// Also process any files that arrived when the companion wasn’t running
+processAllFiles()
 
+async function HandleApiRequestFromDevice(payload)
+{
+	console.log(payload)
+	var apiRequest = JSON.parse(payload)
+	var user = await GetUser();
+
+	var collection;
+
+	if(apiRequest.reqType == RequestTypes.Tasks)
+	{
+		collection= await user.TasksInFolder(apiRequest.id);
+	} 
+	else if(apiRequest.reqType == RequestTypes.TaskFolders)
+	{
+		collection = await user.TaskFolders();
+	}
+
+	collection = await collection.Get(apiRequest.s, apiRequest.t);
+
+	//console.log('123123123 ' + JSON.stringify(collection))
+
+	collection.count = collection.data.length;
+
+	console.log(apiRequest + " " + apiRequest['resName'])
+
+	outbox.enqueue(apiRequest.resName, encode(collection)).then((ft) => {
+		console.log(`Transfer of ${ft.name} successfully queued.`);
+	  })
+	  .catch((error) => {
+		console.log(`Failed to queue ${apiRequest.resName}: ${error}`);
+	  })
+}
 
 async function OnRequestTasksInFolder(folderId)
 {
@@ -59,9 +101,30 @@ async function OnRequestTasksInFolder(folderId)
 
 	await GetUser().then(function(user){
 		user.TasksInFolder(folderId).All().then(function(collection){
-			console.log(JSON.stringify(collection));
 			collection.taskFolderId = folderId;
-			outbox.enqueue("TaskCollection", encode(collection)).then((ft) => {
+			
+
+			// strip down collection
+			var strippedCollection = {
+				id: collection.id,
+				data: [],
+				taskFolderId: folderId,
+				count: collection.data.length,
+			};
+
+			for(var taskIndex in collection.data)
+			{
+				var task = collection.data[taskIndex];
+				strippedCollection.data.push({
+					id: task.id,
+					subject: task.subject,
+					status: task.status
+				});
+			}
+
+			//console.log(JSON.stringify(strippedCollection));
+			
+			outbox.enqueue("TaskCollection", encode(strippedCollection)).then((ft) => {
 				console.log(`Transfer of ${ft.name} successfully queued.`);
 			  })
 			  .catch((error) => {

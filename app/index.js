@@ -1,11 +1,14 @@
 import document from "document";
 import { inbox, outbox } from "file-transfer";
-import { readFileSync } from 'fs';
-import { EnableTaskFolderScreen, EnableTasksScreen } from "../app/ViewSwitch";
-import { encode, decode } from 'cbor';
+
+import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen} from "../app/ViewSwitch";
+import { taskFolderDataStreamer, taskDataStreamer } from "../app/DataStreamer";
+
 
 var waitingForTaskFolderCollectionFileToTransition = true;
 var waitingForTaskCollectionFileToTransition = false;
+
+taskFolderDataStreamer.RequestNewCollection({});
 
 // Event occurs when new file(s) are received
 inbox.onnewfile = function () {
@@ -18,21 +21,22 @@ inbox.onnewfile = function () {
 		if (fileName) {
 			console.log(fileName);
 			if (fileName == 'TaskFoldersCollection') {
-				var taskFoldersCollection = readFileSync(fileName, "cbor");
+				//var taskFoldersCollection = readFileSync(fileName, "cbor");
+				taskFolderDataStreamer.LoadFromFileSync(fileName);
 				if(waitingForTaskFolderCollectionFileToTransition)
 				{
 					waitingForTaskFolderCollectionFileToTransition = false;
-					renderTaskFolders(taskFoldersCollection)
+					RenderTaskFolders()
 				}
 				
 			}
 
 			if (fileName == 'TaskCollection') {
-				var tasksCollection = readFileSync(fileName, "cbor");
+				taskDataStreamer.LoadFromFileSync(fileName);
 				if(waitingForTaskCollectionFileToTransition)
 				{
 					waitingForTaskCollectionFileToTransition = false;
-					renderTaskScreen(tasksCollection);
+					renderTaskScreen();
 				}
 			}
 
@@ -40,17 +44,41 @@ inbox.onnewfile = function () {
 	} while (fileName);
 };
 
-function renderTaskFolders(collection)
-{
-	//enable the task folder menu
-	EnableTaskFolderScreen();
+document.onkeypress = function(e) {
+	//console.log("Key pressed: " + e.key);
+	e.preventDefault();
+	if (e.key==="back") {
+		PopScreen();
+	}
+}
 
+function RenderTaskFolders()
+{
+	PushScreen(taskFolderScreen);
 	let VTList = document.getElementById("my-list");
+	VTList.length = taskFolderDataStreamer.GetCollectionLength();
+}
+
+function renderTaskScreen()
+{
+	PushScreen(tasksScreen);
+	let VTList = document.getElementById("checkbox-list");
+	VTList.length = taskDataStreamer.GetCollectionLength();
+}
+
+// setup the list ui's
+SetUpTaskFolderList();
+SetupTaskList();
+
+function SetUpTaskFolderList()
+{
+	let VTList = document.getElementById("my-list");
+	
 	VTList.delegate = {
 		getTileInfo: function(index) {
 		  return {
 			type: "my-pool",
-			value: JSON.stringify(collection.data[index].name),
+			value: taskFolderDataStreamer.GetFromCollection(index).name,
 			index: index
 		  };
 		},
@@ -60,52 +88,48 @@ function renderTaskFolders(collection)
 			let touch = tile.getElementById("touch-me");
 			touch.onclick = evt => {
 			  	// get id
-				var id = collection.data[info.index].id;
+				var id = taskFolderDataStreamer.GetFromCollection(info.index).id;
 				// send message back to the host with id
-				outbox.enqueue("RequestTasksInFolder", encode(JSON.stringify(id))).then((ft) => {
-					console.log(`Transfer of ${ft.name} successfully queued.`);
-					waitingForTaskCollectionFileToTransition = true;
-				  })
-				  .catch((error) => {
-					console.log(`Failed to queue ${filename}: ${error}`);
-				  })
+				console.log('requesting new collection ' + id.length)
+				taskDataStreamer.RequestNewCollection({id:id});
+				waitingForTaskCollectionFileToTransition = true;
 			};
 		  }
 		}
-	  };
+	};
 	
-	  VTList.length = collection.data.length;
+	VTList.length = taskFolderDataStreamer.GetCollectionLength();
 }
 
-function renderTaskScreen(taskCollection)
+function SetupTaskList()
 {
-	EnableTasksScreen();
 	let VTList = document.getElementById("checkbox-list");
 
 	VTList.delegate = {
 		getTileInfo: function(index) {
-		  return {
-			type: "checkbox-pool",
-			value: JSON.stringify(taskCollection.data[index].subject),
-			index: index
-		  };
-		},
-		configureTile: function(tile, info) {
-		  if (info.type == "checkbox-pool") {
-			
-			tile.getElementById("text").text = `${info.value}`;
-			tile.firstChild.onclick = evt => {
-			  	// get id
-				var id = taskCollection.data[info.index].id;
-				// do the complete/uncomplete
+			return {
+				type: "checkbox-pool",
+				value: taskDataStreamer.GetFromCollection(index).subject,
+				index: index
 			};
-			
-		  }
-		}
-	  };
-	
-	  VTList.length = taskCollection.data.length;
-}
+		},
 
+		configureTile: function(tile, info) {
+			if (info.type == "checkbox-pool") 
+			{
+				tile.getElementById("text").text = `${info.value}`;
+				tile.firstChild.onclick = evt => {
+					// get id
+					//var id = GetFromTasksCollection(info.index).id;
+					// do the complete/uncomplete
+				};
+			}
+		}
+	};
+	
+	console.log(taskDataStreamer)
+
+	VTList.length = taskDataStreamer.GetCollectionLength();
+}
 
 
