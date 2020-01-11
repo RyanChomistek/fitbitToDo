@@ -15,7 +15,7 @@ function mySettings(props) {
 					scope={SCOPES}
 					//scope="openid profile User.Read Mail.Read"
 					onReturn={ async (data) => { 
-						console.log(JSON.stringify(data));
+						//console.log(JSON.stringify(data));
 						props.settingsStorage.setItem("excode", data.code) 
 					}}
 				/>

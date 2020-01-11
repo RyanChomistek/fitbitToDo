@@ -1,18 +1,24 @@
 import { CLIENT_ID, CLIENT_SECRET, TOKEN_URL, AUTHORIZE_URL, REDIRECT_URI, SCOPES} from "../common/constants";
 import { settingsStorage } from "settings";
 import {KJUR, b64utoutf8} from '../companion/KJUR'
-function urlEncodeObject(object) 
+
+export async function EnsureTokenState()
 {
-	let fBody = [];
-	for (let prop in object) {
-		let key = encodeURIComponent(prop);
-		let value = encodeURIComponent(object[prop]);
-		fBody.push(key + "=" + value);
-		}
-		
-	fBody = fBody.join("&");
-	return fBody;
-};
+    var timeNow = new Date();
+    var experationTime = settingsStorage.getItem('TokenExpirationDate');
+    var expiresIn = settingsStorage.getItem('TokenExpiresIn');
+    var percentOfTimeLeft = (experationTime - timeNow) / expiresIn;
+
+    if(percentOfTimeLeft < .1)
+    {
+        // refresh
+        console.log("refreshing")
+        var accessToken = settingsStorage.getItem('AccessToken');
+        return await RefreshToken().then(function(foundUser) {
+            console.log('found user:'+ foundUser);
+        });
+    }
+}
 
 export async function GetToken(exchangeCode) 
 {
@@ -27,7 +33,6 @@ export async function GetToken(exchangeCode)
 			code: exchangeCode,
 			redirect_uri: REDIRECT_URI,
             client_id: CLIENT_ID,
-			//client_secret: CLIENT_SECRET,
 		})
 	};
 
@@ -35,91 +40,24 @@ export async function GetToken(exchangeCode)
 		.then(function(data) {
             return data.json();
 		}).then(function(result) {
-            console.log('Result:\n'+ JSON.stringify(Object.keys(result)));
-            console.log('Result:\n'+ JSON.stringify(result));
-
-            // Validate id token
-            var id = validateIdToken(result.id_token);
-            console.log(JSON.stringify(id));
-
-            settingsStorage.setItem('IdInformation', id);
-            settingsStorage.setItem('AccessToken', result.access_token);
-            settingsStorage.setItem('TokenExpiresIn', parseInt(result.expires_in) * 1000);
-            var timeNow = new Date();
-            var expirationDate = new Date(timeNow.getTime() + parseInt(result.expires_in) * 1000);
-            settingsStorage.setItem('TokenExpirationDate', expirationDate.getTime());
-            settingsStorage.setItem('TokenGenerationDate', timeNow.toISOString());
-
-            
+            ExtractTokenResposeInfo(result);
         }).catch(function(err) {
-				console.log('Error on token gen: '+ err);
-			});
+                console.log('Error on token gen: '+ err);
+        });
 }
 
 //RefreshToken().then(function(result){console.log('refres res' + result)});
-
-function uuidv4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  }
-
-function buildAuthUrl() {
-    // Generate random values for state and nonce
-    var authState = uuidv4();
-    var authNonce = uuidv4();
-  
-    var authParams = {
-      response_type: 'id_token token',
-      client_id: CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
-      scope: SCOPES,
-      state: authState,
-      nonce: authNonce,
-      response_mode: 'fragment'
-    };
-  
-    return AUTHORIZE_URL + urlEncodeObject(authParams);
-}
-
-function buildAuthBody()
+async function RefreshToken()
 {
-    // Generate random values for state and nonce
-    var authState = uuidv4();
-    var authNonce = uuidv4();
-    
-    var authParams = {
-        response_type: 'id_token token',
-        client_id: CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
-        scope: SCOPES,
-        state: authState,
-        nonce: authNonce,
-        response_mode: 'fragment'
-    };
+    var refreshToken = settingsStorage.getItem('RefreshToken');
 
-    return authParams;
-}
-
-export async function RefreshToken()
-{
-    
-    var id = settingsStorage.getItem('IdInformation');
-    //var authBody = buildAuthBody();
-    //authBody.grant_type = "client_credentials";
-    //authBody.prompt = "none";
-    //authBody.domain_hint = id.userDomainType;
-    //authBody.login_hint = id.userSigninName;
     var authBody = {
-        grant_type: "client_credentials",
+        grant_type: "refresh_token",
         client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        prompt: "none",
-        domain_hint: id.userDomainType,
-        login_hint: id.userSigninName,
         scope: SCOPES,
+        refresh_token: refreshToken,
     }
+
     const requestBody = {
         method: 'POST',
         headers: {
@@ -129,27 +67,49 @@ export async function RefreshToken()
         },
         body: urlEncodeObject(authBody)
     };
-    console.log(requestBody);
-    return await fetch(AUTHORIZE_URL, requestBody)
-    .then(function(data) {
-        return data.text();
-    }).catch(function(err) {
-            console.log('Error on refresh token gen: '+ err);
-        });
-        
-    /*
-    var id = settingsStorage.getItem('IdInformation');
-    var authUrl = buildAuthUrl();
-    console.log(authUrl)
-    return await fetch(authUrl)
+    
+    return await fetch(TOKEN_URL, requestBody)
         .then(function(data) {
-            return data.text();
+            return data.json();
+        }).then(function(result) {
+            ExtractTokenResposeInfo(result);
+            return true;
         }).catch(function(err) {
-                console.log('Error on refresh token gen: '+ err);
-            });
-    */
-    
-    
+            console.log('Error on refresh token gen: '+ err);
+            return false;
+        });
+}
+
+function urlEncodeObject(object) 
+{
+	let fBody = [];
+	for (let prop in object) {
+		let key = encodeURIComponent(prop);
+		let value = encodeURIComponent(object[prop]);
+		fBody.push(key + "=" + value);
+		}
+		
+	fBody = fBody.join("&");
+	return fBody;
+};
+
+function ExtractTokenResposeInfo(tokenResponse)
+{
+    //console.log('R Result headers:\n'+ JSON.stringify(Object.keys(result)));
+    //console.log('R Result body:\n'+ JSON.stringify(result));
+    // Validate id token
+    var id = validateIdToken(tokenResponse.id_token);
+    //console.log(JSON.stringify(id));
+
+    settingsStorage.setItem('IdInformation', id);
+    settingsStorage.setItem('AccessToken', tokenResponse.access_token);
+    settingsStorage.setItem('RefreshToken', tokenResponse.refresh_token);
+    settingsStorage.setItem('TokenExpiresIn', parseInt(tokenResponse.expires_in) * 1000);
+
+    var timeNow = new Date();
+    var expirationDate = new Date(timeNow.getTime() + parseInt(tokenResponse.expires_in) * 1000);
+    settingsStorage.setItem('TokenExpirationDate', expirationDate.getTime());
+    settingsStorage.setItem('TokenGenerationDate', timeNow.toISOString());
 }
 
 // from https://docs.microsoft.com/en-us/outlook/rest/javascript-tutorial
@@ -187,7 +147,7 @@ function validateIdToken(idToken) {
         */
 
         // Check the audience
-        console.log(payload.aud)
+        //console.log(payload.aud)
 		if (payload.aud != CLIENT_ID) {
 			return null;
 		}
