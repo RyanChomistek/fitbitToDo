@@ -44,12 +44,7 @@ async function processAllFiles() {
 		// I think this is a bug with the file transfer, it always prepends random characters, so find the first bracket
 		payload = payload.slice(payload.indexOf('{'));
 		console.log(`file contents: ${fileName} ${payload}`);
-		if(fileName == 'RequestTasksInFolder')
-		{
-			HandleApiRequestFromDevice(payload);
-		}
-
-		if(fileName == "RequestTaskFolders")
+		if(fileName == 'RequestTasksInFolder' || fileName == "RequestTaskFolders")
 		{
 			HandleApiRequestFromDevice(payload);
 		}
@@ -81,11 +76,12 @@ async function HandleApiRequestFromDevice(payload)
 
 	collection = await collection.Get(apiRequest.s, apiRequest.t);
 
-	//console.log('123123123 ' + JSON.stringify(collection))
+	collection.count = await collection.Count();
 
-	collection.count = collection.data.length;
+	collection.s = apiRequest.s;
+	collection.t = apiRequest.t;
 
-	console.log(apiRequest + " " + apiRequest['resName'])
+	console.log(apiRequest + " " + apiRequest['resName'] + " " + collection.count  )
 
 	outbox.enqueue(apiRequest.resName, encode(collection)).then((ft) => {
 		console.log(`Transfer of ${ft.name} successfully queued.`);

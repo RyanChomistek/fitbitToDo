@@ -22,8 +22,6 @@ function CreateDataStreamer()
             requestPayload.t = dataStreamer.maxSize;
             requestPayload.resName = dataStreamer.responseName;
             requestPayload.reqType = dataStreamer.requestType;
-            requestPayload.data = "123456789012345678901234567890"
-            //requestPayload.data2 = "123456789012345678901234567890123456789012345678901234567890"
             console.log(dataStreamer.requestName +"|"+ JSON.stringify(requestPayload) + "|" + JSON.stringify(requestPayload).length)
             console.log(JSON.stringify(requestPayload))
             outbox.enqueue(dataStreamer.requestName, encode(JSON.stringify(requestPayload))).then((ft) => {
@@ -35,6 +33,10 @@ function CreateDataStreamer()
         },
         LoadFromFileSync: (fileName) => {
             dataStreamer.collection = readFileSync(fileName, "cbor");
+            dataStreamer.startIndex = dataStreamer.collection.s;
+            dataStreamer.endIndex = dataStreamer.collection.s + dataStreamer.collection.t;
+            console.log(dataStreamer.startIndex + " " + dataStreamer.endIndex )
+            //dataStreamer.endIndex += 
         },
         GetFromCollection: (index) => {
             return dataStreamer.collection.data[index];
@@ -42,8 +44,15 @@ function CreateDataStreamer()
         GetCollectionLength: () => {
             if(dataStreamer.collection)
             {
-                //console.log(JSON.stringify(dataStreamer.collection))
                 return dataStreamer.collection.count;
+            }
+            
+            return 0;
+        },
+        GetLocalCollectionLength: () => {
+            if(dataStreamer.collection)
+            {
+                return dataStreamer.collection.data.length;
             }
             
             return 0;

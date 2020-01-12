@@ -43,23 +43,18 @@ export function PopScreen()
 
 function EnableLoadingScreen()
 {
-    //DisableTaskFolderScreen();
-    //DisableTasksScreen();
     loadingScreen.style.display = "inline";
     spinner.state = "enabled";
 }
 
 function EnableTaskFolderScreen()
 {
-    //DisableLoadingScreen();
-    //DisableTasksScreen();
     taskFolderScreen.style.display = "inline";
+    // hook onto the buttons for loading more data
 }
 
 function EnableTasksScreen()
 {
-    //DisableLoadingScreen()
-    //DisableTaskFolderScreen()
     tasksScreen.style.display = "inline";
 }
 

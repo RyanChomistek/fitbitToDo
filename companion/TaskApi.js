@@ -73,7 +73,6 @@ async function Get(collection, skip = 0, top = 10)
     return await GetFromApi(collection, skip, top)
 }
 
-
 /*
 Gets all entities from this collection, from the skip index to the end of the collection
 */
@@ -162,6 +161,8 @@ async function GetFromApi(collection, skip = 0, top = 10)
         }
 
         localStorage.setItem("IdHashMap", JSON.stringify(idHashMap));
+        collection.count = data.length;
+
         return collection;
     });
 }

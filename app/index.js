@@ -56,14 +56,15 @@ function RenderTaskFolders()
 {
 	PushScreen(taskFolderScreen);
 	let VTList = document.getElementById("my-list");
-	VTList.length = taskFolderDataStreamer.GetCollectionLength();
+	VTList.length = taskFolderDataStreamer.GetLocalCollectionLength();
 }
 
 function renderTaskScreen()
 {
 	PushScreen(tasksScreen);
 	let VTList = document.getElementById("checkbox-list");
-	VTList.length = taskDataStreamer.GetCollectionLength();
+	console.log("++++$$$$$$$$$$$$$$$$$$$" + JSON.stringify(taskDataStreamer.GetCollectionLength()))
+	VTList.length = taskDataStreamer.GetLocalCollectionLength();
 }
 
 // setup the list ui's
@@ -104,9 +105,21 @@ function SetUpTaskFolderList()
 function SetupTaskList()
 {
 	let VTList = document.getElementById("checkbox-list");
-
+	var length = taskDataStreamer.GetCollectionLength();
+	
 	VTList.delegate = {
 		getTileInfo: function(index) {
+			console.log('task' + index);
+			// when we hit the bottom (or top if were in the middle),
+			//show a button to load more things
+			console.log("pool ++++++ " + VTList.getElementById("virtual").value)
+			console.log(index + " " + taskDataStreamer.GetLocalCollectionLength() + " | ");
+			if(index == taskDataStreamer.GetLocalCollectionLength() - 1)
+			{
+				//console.log(JSON.stringify(VTList));
+				document.getElementById("LoadMoreBottom").style.display = "inline";
+			}
+
 			return {
 				type: "checkbox-pool",
 				value: taskDataStreamer.GetFromCollection(index).subject,
@@ -126,10 +139,8 @@ function SetupTaskList()
 			}
 		}
 	};
-	
-	console.log(taskDataStreamer)
 
-	VTList.length = taskDataStreamer.GetCollectionLength();
+	VTList.length = length;
 }
 
 

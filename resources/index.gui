@@ -19,7 +19,7 @@
 
   <svg id="loadingScreen">
     <svg viewport-fill="fb-cyan">
-      <use id="spinner" href="#spinner" />
+        <use id="spinner" href="#spinner"/>
     </svg>
   </svg>
   
@@ -60,8 +60,13 @@
         <use id="checkbox-pool[8]" href="#checkbox-tile-item" class="tile-list-item" />
         <use id="checkbox-pool[9]" href="#checkbox-tile-item" class="tile-list-item" />
       </use>
-
+    </use>
+    <use id="LoadMoreBottom" href="#combo-button-lower-right" fill="fb-peach" display="none">
+      <set href="combo-button-icon" attributeName="href" to="images/downloadButton_outline.png"/>
+      <set href="combo-button-icon-press" attributeName="href" to="images/downloadButton_filled.png"/>
+      <set href="combo-button-stroke" attributeName="display" to="inline"/>
     </use>
   </svg>
+
 
 </svg>
