@@ -143,4 +143,9 @@ function SetupTaskList()
 	VTList.length = length;
 }
 
-
+let btnBR = document.getElementById("LoadMoreBottom");
+btnBR.onactivate = function(evt) {
+	var id = taskDataStreamer.collection.id;
+	console.log(id)
+	//taskDataStreamer.RequestNewCollection()
+}

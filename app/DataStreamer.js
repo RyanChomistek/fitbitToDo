@@ -17,7 +17,7 @@ function CreateDataStreamer()
         maxSize: 15,
         startIndex: 0,
         endIndex:0,
-        RequestNewCollection: (requestPayload) =>{
+        RequestNewCollection: (requestPayload, skip) =>{
             requestPayload.s = 0;
             requestPayload.t = dataStreamer.maxSize;
             requestPayload.resName = dataStreamer.responseName;

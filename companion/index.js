@@ -76,6 +76,13 @@ async function HandleApiRequestFromDevice(payload)
 
 	collection = await collection.Get(apiRequest.s, apiRequest.t);
 
+	if(apiRequest.reqType == RequestTypes.Tasks)
+	{
+		// STORE THE FOLDER ID
+		collection.id = apiRequest.id;
+		// CONDENSE THE TASKS
+	} 
+
 	collection.count = await collection.Count();
 
 	collection.s = apiRequest.s;
