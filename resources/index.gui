@@ -43,7 +43,6 @@
     </use>
   </svg>
 
-<!-- switch to tumbler view-->
   <svg id="TasksScreen">
     <use id="checkbox-list" href="#tile-list">
       <var id="virtual" value="1" />

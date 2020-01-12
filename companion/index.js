@@ -8,6 +8,8 @@ import { readFileSync } from 'fs';
 import { Login, GetUser } from "../companion/TaskApi";
 import { RequestTypes } from '../common/constants'
 
+console.log('here')
+
 settingsStorage.onchange = function(evt) 
 {
 	if (evt.key === "excode") 

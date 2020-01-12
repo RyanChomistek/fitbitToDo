@@ -14,7 +14,7 @@ function CreateDataStreamer()
         responseName: "default",
         requestType: -1,
         collection: null,
-        maxSize: 15,
+        maxSize: 25,
         startIndex: 0,
         endIndex:0,
         RequestNewCollection: (requestPayload, skip = 0) =>{
