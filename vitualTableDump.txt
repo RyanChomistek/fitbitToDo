@@ -1,0 +1,42 @@
+[12:10:08 AM]       App: key:innerText, type:<unknown> =text is only available for text(area) elements!
+[12:10:08 AM]       App: * object dump *
+[12:10:08 AM]       App: name:undefined
+[12:10:08 AM]       App: ** methods **
+[12:10:08 AM]       App: constructor
+[12:10:08 AM]       App: updateTile
+[12:10:08 AM]       App: redraw
+[12:10:08 AM]       App: getBBox
+[12:10:08 AM]       App: getElementById
+[12:10:08 AM]       App: getElementsByClassName
+[12:10:08 AM]       App: getElementsByTypeName
+[12:10:08 AM]       App: getElementsByTagName
+[12:10:08 AM]       App: sendEvent
+[12:10:08 AM]       App: animate
+[12:10:08 AM]       App: addEventListener
+[12:10:08 AM]       App: removeEventListener
+[12:10:08 AM]       App: dispatchEvent
+[12:10:08 AM]       App: ** attributes **
+[12:10:08 AM]       App: {"name":"length","type":"number","value":15}
+[12:10:08 AM]       App: {"name":"firstVisibleTile","type":"number","value":11}
+[12:10:08 AM]       App: {"name":"lastVisibleTile","type":"number","value":14}
+[12:10:08 AM]       App: {"name":"delegate","type":"object","value":{}}
+[12:10:08 AM]       App: {"name":"listeners","type":"object","value":{}}
+[12:10:08 AM]       App: {"name":"clipChildren","type":"undefined"}
+[12:10:08 AM]       App: {"name":"style","type":"object","value":{}}
+[12:10:08 AM]       App: {"name":"x","type":"number","value":0}
+[12:10:08 AM]       App: {"name":"y","type":"number","value":0}
+[12:10:08 AM]       App: {"name":"width","type":"number","value":0}
+[12:10:08 AM]       App: {"name":"height","type":"number","value":0}
+[12:10:08 AM]       App: {"name":"text","type":"string","value":"Restraunts"}
+[12:10:08 AM]       App: {"name":"image","type":"string","value":""}
+[12:10:08 AM]       App: {"name":"value","type":"number","value":12}
+[12:10:08 AM]       App: {"name":"mode","type":"number","value":-2147483648}
+[12:10:08 AM]       App: {"name":"state","type":"string","value":"selected"}
+[12:10:08 AM]       App: {"name":"parent","type":"object","value":{"listeners":{}}}
+[12:10:08 AM]       App: {"name":"nextSibling","type":"undefined"}
+[12:10:08 AM]       App: {"name":"firstChild","type":"object","value":{}}
+[12:10:08 AM]       App: {"name":"children","type":"object","value":[{},{},{},{},{},{"listeners":{}}]}
+[12:10:08 AM]       App: {"name":"id","type":"string","value":"my-list"}
+[12:10:08 AM]       App: {"name":"class","type":"string","value":"tile-list"}
+[12:10:08 AM]       App: {"name":"type","type":"string","value":"tile-list"}
+[12:10:08 AM]       App: {"name":"layer","type":"undefined"}   

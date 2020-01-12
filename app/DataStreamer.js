@@ -17,8 +17,8 @@ function CreateDataStreamer()
         maxSize: 15,
         startIndex: 0,
         endIndex:0,
-        RequestNewCollection: (requestPayload, skip) =>{
-            requestPayload.s = 0;
+        RequestNewCollection: (requestPayload, skip = 0) =>{
+            requestPayload.s = skip;
             requestPayload.t = dataStreamer.maxSize;
             requestPayload.resName = dataStreamer.responseName;
             requestPayload.reqType = dataStreamer.requestType;
@@ -36,7 +36,6 @@ function CreateDataStreamer()
             dataStreamer.startIndex = dataStreamer.collection.s;
             dataStreamer.endIndex = dataStreamer.collection.s + dataStreamer.collection.t;
             console.log(dataStreamer.startIndex + " " + dataStreamer.endIndex )
-            //dataStreamer.endIndex += 
         },
         GetFromCollection: (index) => {
             return dataStreamer.collection.data[index];

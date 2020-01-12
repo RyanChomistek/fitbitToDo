@@ -4,6 +4,8 @@ import { inbox, outbox } from "file-transfer";
 import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen} from "../app/ViewSwitch";
 import { taskFolderDataStreamer, taskDataStreamer } from "../app/DataStreamer";
 
+import { dumpObject } from './util';
+import {SetupTaskList} from './StreamingVirtualTable';
 
 var waitingForTaskFolderCollectionFileToTransition = true;
 var waitingForTaskCollectionFileToTransition = false;
@@ -28,7 +30,6 @@ inbox.onnewfile = function () {
 					waitingForTaskFolderCollectionFileToTransition = false;
 					RenderTaskFolders()
 				}
-				
 			}
 
 			if (fileName == 'TaskCollection') {
@@ -37,6 +38,14 @@ inbox.onnewfile = function () {
 				{
 					waitingForTaskCollectionFileToTransition = false;
 					renderTaskScreen();
+				}
+				else
+				{
+					// already rendering task view
+					//dumpObject(VTList)
+					let VTList = document.getElementById("checkbox-list");
+					VTList.value = 0;
+					VTList.redraw();
 				}
 			}
 
@@ -90,6 +99,7 @@ function SetUpTaskFolderList()
 			touch.onclick = evt => {
 			  	// get id
 				var id = taskFolderDataStreamer.GetFromCollection(info.index).id;
+				
 				// send message back to the host with id
 				console.log('requesting new collection ' + id.length)
 				taskDataStreamer.RequestNewCollection({id:id});
@@ -102,50 +112,9 @@ function SetUpTaskFolderList()
 	VTList.length = taskFolderDataStreamer.GetCollectionLength();
 }
 
-function SetupTaskList()
-{
-	let VTList = document.getElementById("checkbox-list");
-	var length = taskDataStreamer.GetCollectionLength();
-	
-	VTList.delegate = {
-		getTileInfo: function(index) {
-			console.log('task' + index);
-			// when we hit the bottom (or top if were in the middle),
-			//show a button to load more things
-			console.log("pool ++++++ " + VTList.getElementById("virtual").value)
-			console.log(index + " " + taskDataStreamer.GetLocalCollectionLength() + " | ");
-			if(index == taskDataStreamer.GetLocalCollectionLength() - 1)
-			{
-				//console.log(JSON.stringify(VTList));
-				document.getElementById("LoadMoreBottom").style.display = "inline";
-			}
-
-			return {
-				type: "checkbox-pool",
-				value: taskDataStreamer.GetFromCollection(index).subject,
-				index: index
-			};
-		},
-
-		configureTile: function(tile, info) {
-			if (info.type == "checkbox-pool") 
-			{
-				tile.getElementById("text").text = `${info.value}`;
-				tile.firstChild.onclick = evt => {
-					// get id
-					//var id = GetFromTasksCollection(info.index).id;
-					// do the complete/uncomplete
-				};
-			}
-		}
-	};
-
-	VTList.length = length;
-}
-
 let btnBR = document.getElementById("LoadMoreBottom");
 btnBR.onactivate = function(evt) {
 	var id = taskDataStreamer.collection.id;
 	console.log(id)
-	//taskDataStreamer.RequestNewCollection()
+	taskDataStreamer.RequestNewCollection({id:id}, taskDataStreamer.endIndex)
 }
