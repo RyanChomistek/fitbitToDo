@@ -6,47 +6,71 @@ import { encode } from 'cbor';
 import { readFileSync } from 'fs';
 
 import { Login, GetUser } from "../companion/TaskApi";
-import { RequestTypes } from '../common/constants'
+import { RequestTypes, EntityTypes } from '../common/constants'
+import { MemSizeAprox } from '../common/MemSize'
 
 console.log('here')
+
+function SendMessage(messageTitle, messageBody)
+{
+	outbox.enqueue(messageTitle, encode(messageBody)).then((ft) => {
+		console.log(`Transfer of ${ft.name} successfully queued.`);
+	  })
+	  .catch((error) => {
+		console.log(`Failed to queue ${filename}: ${error}`);
+	  })
+}
 
 settingsStorage.onchange = function(evt) 
 {
 	if (evt.key === "excode") 
 	{
-		Login(evt);
-		GetUser().then(function(user){
-			user.TaskFolders().All().then(function(collection){
-				collection.count = collection.data.length;
-				localStorage.setItem("TaskFoldersCollection", collection);
-
-				outbox.enqueue("TaskFoldersCollection", encode(collection)).then((ft) => {
-					console.log(`Transfer of ${ft.name} successfully queued.`);
-				  })
-				  .catch((error) => {
-					console.log(`Failed to queue ${filename}: ${error}`);
-				  })
+		Login(evt).then(() => {
+			GetUser().then(function(user){
+				user.TaskFolders().All().then(function(collection){
+					collection.count = collection.data.length;
+					localStorage.setItem("TaskFoldersCollection", collection);
+	
+					outbox.enqueue("TaskFoldersCollection", encode(collection)).then((ft) => {
+						console.log(`Transfer of ${ft.name} successfully queued.`);
+					  })
+					  .catch((error) => {
+						console.log(`Failed to queue ${filename}: ${error}`);
+					  })
+				});
 			});
 		});
 	} 
-	else if (evt.key === "refresh_token")
+	else if (evt.key === "NormalColorChanged")
 	{
+		console.log(settingsStorage.getItem('NormalColorChanged'));
+		SendMessage('NormalColorChanged', settingsStorage.getItem('NormalColorChanged'));
+	} 
+	else if(evt.key === "ClearAllInfo")
+	{
+		localStorage.clear();
+		outbox.enqueue("ClearAllInfo", encode({}, 'json')).then((ft) => {
+			console.log(`Transfer of ${ft.name} successfully queued.`);
+		  })
+		  .catch((error) => {
+			console.log(`Failed to queue ${filename}: ${error}`);
+		  })
 	}
 }
 
 // wait for file input from device
 async function processAllFiles() {
-	console.log('process all files')
+	//console.log('process all files')
 	let file;
 	while ((file = await inbox.pop())) {
 		const fileName = file.name;
-		console.log('processing file' + fileName);
+		//console.log('processing file' + fileName);
 		var payload = await file.text();
 
 		// I think this is a bug with the file transfer, it always prepends random characters, so find the first bracket
 		payload = payload.slice(payload.indexOf('{'));
 		console.log(`file contents: ${fileName} ${payload}`);
-		if(fileName == 'RequestTasksInFolder' || fileName == "RequestTaskFolders")
+		if(fileName == 'RequestTasksInFolder' || fileName == "RequestTaskFolders" || fileName == 'UpdateTask')
 		{
 			HandleApiRequestFromDevice(payload);
 		}
@@ -62,37 +86,67 @@ processAllFiles()
 async function HandleApiRequestFromDevice(payload)
 {
 	console.log(payload)
-	var apiRequest = JSON.parse(payload)
-	var user = await GetUser();
-
+	let apiRequest = JSON.parse(payload)
+	let user = null;
+	try
+	{
+		user = await GetUser();
+	}
+	catch (err)
+	{
+		console.error(err);
+		return;
+	}
+	
 	var collection;
 
-	if(apiRequest.reqType == RequestTypes.Tasks)
+	//console.log(`${apiRequest.entityType} ${EntityTypes}` );
+
+	if(apiRequest.entityType == EntityTypes.TasksInFolder)
 	{
-		collection= await user.TasksInFolder(apiRequest.id);
+		collection = user.TasksInFolder(apiRequest.id);
 	} 
-	else if(apiRequest.reqType == RequestTypes.TaskFolders)
+	else if(apiRequest.entityType == EntityTypes.TaskFolders)
 	{
-		collection = await user.TaskFolders();
+		collection = user.TaskFolders();
+	}
+	else if(apiRequest.entityType == EntityTypes.Task)
+	{
+		collection = user.Task(apiRequest.id);
 	}
 
+	if(apiRequest.reqType == RequestTypes.Get)
+	{
+		HandleApiGetRequests(apiRequest, collection);
+	}
+	else if(apiRequest.reqType == RequestTypes.Update)
+	{
+		HandleApiUpdateRequests(apiRequest, collection);
+	}
+}
+
+async function HandleApiGetRequests(apiRequest, collection)
+{
 	collection = await collection.Get(apiRequest.s, apiRequest.t);
 
-	if(apiRequest.reqType == RequestTypes.Tasks)
+	var compressedCollection = collection.CompressCollection();
+
+	if(apiRequest.entityType == EntityTypes.TasksInFolder)
 	{
-		// STORE THE FOLDER ID
-		collection.id = apiRequest.id;
-		// CONDENSE THE TASKS
+		compressedCollection.id = apiRequest.id;
 	} 
 
-	collection.count = await collection.Count();
+	compressedCollection.count = await collection.Count();
 
-	collection.s = apiRequest.s;
-	collection.t = apiRequest.t;
+	compressedCollection.s = apiRequest.s;
+	compressedCollection.t = apiRequest.t;
 
-	console.log(apiRequest + " " + apiRequest['resName'] + " " + collection.count  )
+	//console.log(`collection : ${JSON.stringify(compressedCollection)}`)
+	//console.log(`response size ${MemSizeAprox(compressedCollection)}`)
 
-	outbox.enqueue(apiRequest.resName, encode(collection)).then((ft) => {
+	//console.log(apiRequest + " " + apiRequest['resName'] + " " + compressedCollection.count  )
+
+	outbox.enqueue(apiRequest.resName, encode(compressedCollection)).then((ft) => {
 		console.log(`Transfer of ${ft.name} successfully queued.`);
 	  })
 	  .catch((error) => {
@@ -100,43 +154,8 @@ async function HandleApiRequestFromDevice(payload)
 	  })
 }
 
-async function OnRequestTasksInFolder(folderId)
+async function HandleApiUpdateRequests(apiRequest, collection)
 {
-	console.log(JSON.stringify(folderId))
-
-	await GetUser().then(function(user){
-		user.TasksInFolder(folderId).All().then(function(collection){
-			collection.taskFolderId = folderId;
-			
-
-			// strip down collection
-			var strippedCollection = {
-				id: collection.id,
-				data: [],
-				taskFolderId: folderId,
-				count: collection.data.length,
-			};
-
-			for(var taskIndex in collection.data)
-			{
-				var task = collection.data[taskIndex];
-				strippedCollection.data.push({
-					id: task.id,
-					subject: task.subject,
-					status: task.status
-				});
-			}
-
-			//console.log(JSON.stringify(strippedCollection));
-			
-			outbox.enqueue("TaskCollection", encode(strippedCollection)).then((ft) => {
-				console.log(`Transfer of ${ft.name} successfully queued.`);
-			  })
-			  .catch((error) => {
-				console.log(`Failed to queue ${filename}: ${error}`);
-			  })
-		});
-	});
-	
+	console.log(`update ${JSON.stringify(apiRequest)} \n ${JSON.stringify(collection)}`)
+	let result = await collection.Update(apiRequest.itemUpdated);
 }
-

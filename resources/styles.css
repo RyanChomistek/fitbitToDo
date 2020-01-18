@@ -16,3 +16,7 @@
     height: 2;
     fill: #A0A0A0;
   }
+
+  .text {
+    fill: 'white';
+  }

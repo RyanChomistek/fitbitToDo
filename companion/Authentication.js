@@ -1,15 +1,31 @@
 import { CLIENT_ID, CLIENT_SECRET, TOKEN_URL, AUTHORIZE_URL, REDIRECT_URI, SCOPES} from "../common/constants";
 import { settingsStorage } from "settings";
+
 import {KJUR, b64utoutf8} from '../companion/KJUR'
+import {urlEncodeObject} from "../common/HTTPUtil"
+
+export function HasValidTokenState()
+{
+	var timeNow = new Date();
+    var experationTime = settingsStorage.getItem('TokenExpirationDate');
+    var expiresIn = settingsStorage.getItem('TokenExpiresIn');
+	var percentOfTimeLeft = (experationTime - timeNow) / expiresIn;
+	console.log(`has valid token ${percentOfTimeLeft > .1}`)
+	return percentOfTimeLeft > .1;
+}
 
 export async function EnsureTokenState()
 {
-    var timeNow = new Date();
-    var experationTime = settingsStorage.getItem('TokenExpirationDate');
-    var expiresIn = settingsStorage.getItem('TokenExpiresIn');
-    var percentOfTimeLeft = (experationTime - timeNow) / expiresIn;
+	console.log(`access token ${settingsStorage.getItem('AccessToken')} ++++++++++++++++++++++++++++++++++++++')`)
+	console.log(`access token ${settingsStorage.getItem('AccessToken') == undefined} ++++++++++++++++++++++++++++++++++++++')`)
+	//do we even have a token
+	if(settingsStorage.getItem('AccessToken') == undefined)
+	{
+		console.log('asdasdasdasdasd++++++++++++++++++++++++++++++++++++++')
+		throw 'no AccessToken, user has not logged in yet';
+	}
 
-    if(percentOfTimeLeft < .1)
+    if(!HasValidTokenState())
     {
         // refresh
         console.log("refreshing")
@@ -35,14 +51,17 @@ export async function GetToken(exchangeCode)
             client_id: CLIENT_ID,
 		})
 	};
-
+	
+	console.log(`token request ${exchangeCode}`)
+	console.trace();
 	return await fetch(TOKEN_URL, Token_Body)
-		.then(function(data) {
-            return data.json();
+		.then(async function(data) {
+            return await data.json();
 		}).then(function(result) {
             ExtractTokenResposeInfo(result);
-        }).catch(function(err) {
-                console.log('Error on token gen: '+ err);
+		}).catch(function(err) {
+				console.log('Error on token gen: '+ err);
+				
         });
 }
 
@@ -67,7 +86,7 @@ async function RefreshToken()
         },
         body: urlEncodeObject(authBody)
     };
-    
+	
     return await fetch(TOKEN_URL, requestBody)
         .then(function(data) {
             return data.json();
@@ -80,28 +99,17 @@ async function RefreshToken()
         });
 }
 
-function urlEncodeObject(object) 
-{
-	let fBody = [];
-	for (let prop in object) {
-		let key = encodeURIComponent(prop);
-		let value = encodeURIComponent(object[prop]);
-		fBody.push(key + "=" + value);
-		}
-		
-	fBody = fBody.join("&");
-	return fBody;
-};
-
 function ExtractTokenResposeInfo(tokenResponse)
 {
-    //console.log('R Result headers:\n'+ JSON.stringify(Object.keys(result)));
-    //console.log('R Result body:\n'+ JSON.stringify(result));
+    console.log('R Result headers:\n'+ JSON.stringify(Object.keys(tokenResponse)));
+    console.log('R Result body:\n'+ JSON.stringify(tokenResponse));
     // Validate id token
     var id = validateIdToken(tokenResponse.id_token);
     //console.log(JSON.stringify(id));
 
-    settingsStorage.setItem('IdInformation', id);
+	// IMPORTANT if you add any new settings here make sure to clear them out in login (in ../settings/index.js)
+	settingsStorage.setItem('IsLoggedIn', true);
+    settingsStorage.setItem('IdInformation', JSON.stringify(id));
     settingsStorage.setItem('AccessToken', tokenResponse.access_token);
     settingsStorage.setItem('RefreshToken', tokenResponse.refresh_token);
     settingsStorage.setItem('TokenExpiresIn', parseInt(tokenResponse.expires_in) * 1000);

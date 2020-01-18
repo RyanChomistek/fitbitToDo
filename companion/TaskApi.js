@@ -1,19 +1,22 @@
-import { GetToken, EnsureTokenState } from "../companion/Authentication.js";
 import { settingsStorage } from "settings";
 import { localStorage } from "local-storage";
 
+import { GetToken, EnsureTokenState } from "../companion/Authentication.js";
+import { taskDataStreamer } from '../app/DataStreamer.js';
+import { TasksCompressedCollectionFields } from '../common/constants'
+import {urlEncodeObject} from "../common/HTTPUtil"
+
 export async function GetUser()
 {
-    return await EnsureTokenState().then(function(){
-        var user = new Object();
-        user.TaskFolders = function(){return TaskFolders(user);};
-        user.TasksInFolder = function(taskFolder){return TasksInFolder(user, taskFolder);};
-        //user.asd = function(){return 1;};
-        console.log('get user'  + user)
-        return user;
-    }).catch(function(err) {
-        console.log('problem ensuring tokens: '+ err);
-    });
+    await EnsureTokenState();
+
+    var user = new Object();
+    user.TaskFolders = function(){return TaskFolders(user);};
+    user.TasksInFolder = function(taskFolder){return TasksInFolder(user, taskFolder);};
+    user.Task = function(taskId){return Task(user, taskId)};
+    
+    console.log('get user' + JSON.stringify(user))
+    return user;
 }
 
 export async function Login(evt)
@@ -32,7 +35,9 @@ function CreateCollection(user, endpointName)
     collection.HasUnsyncedData = true;
     collection.Get = async function(skip=0, top=10){return await Get(collection, skip, top)};
     collection.All = async function(skip=0, maxChunkSize=10){return await All(collection, maxChunkSize)};
-    collection.Count = async function(){return await GetCountFromApi(collection)};
+    collection.Count = async function() { return await GetCountFromApi(collection)};
+    collection.Update = async function(itemUpdated){ return await UpdateFromApi(collection, itemUpdated)}
+    collection.CompressCollection = function(){return collection;};
     return collection;
 }
 
@@ -41,7 +46,27 @@ returns an object that knows how to get taskFolders
 */
 function TaskFolders(user)
 {
-    return CreateCollection(user, 'taskfolders');
+    var collection = CreateCollection(user, 'taskfolders');
+
+    collection.CompressCollection = function()
+    {
+        var compressedData = [];
+        
+        for(var i = 0; i < collection.data.length; i++)
+        {
+            var item = collection.data[i];
+            compressedData.push({
+                id: item.id,
+                name: item.name,
+            });
+        }
+
+        return {
+            data:compressedData
+        };
+    }
+
+    return collection;
 }
 
 /*
@@ -57,11 +82,39 @@ returns an object that knows how to get tasks
 */
 function TasksInFolder(user, hashedTaskFolderId)
 {
-    var idHashMap = JSON.parse(localStorage.getItem("IdHashMap"));
-    //console.log(idHashMap)
-    var id = idHashMap[hashedTaskFolderId];
-    console.log('unhashed id = ' + id)
-    return CreateCollection(user, (`taskfolders(\'${id}\')/tasks`));
+    let idHashMap = JSON.parse(localStorage.getItem("IdHashMap"));
+    let id = idHashMap[hashedTaskFolderId];
+    console.log('folder unhashed id = ' + id)
+    let collection = CreateCollection(user, (`taskfolders(\'${id}\')/tasks`));
+    collection.CompressCollection = function()
+    {
+        let compressedData = [];
+        
+        for(let i = 0; i < collection.data.length; i++)
+        {
+            let item = collection.data[i];
+            compressedData.push({
+                id: item.id,
+                subject: item.subject,
+                status: item.status == "completed" ? true: false,
+            });
+        }
+
+        return {
+            data:compressedData
+        };
+    }
+
+    return collection;
+}
+
+function Task(user, hashedTaskId)
+{
+    let idHashMap = JSON.parse(localStorage.getItem("IdHashMap"));
+    let id = idHashMap[hashedTaskId];
+    console.log('task unhashed id = ' + id)
+    let collection = CreateCollection(user, (`tasks(\'${id}\')`));
+    return collection;
 }
 
 /*
@@ -143,9 +196,7 @@ async function GetFromApi(collection, skip = 0, top = 10)
         }
         else
         {
-            //console.log(JSON.stringify(idHashMap))
             idHashMap = JSON.parse(idHashMap);
-            //idHashMap = {};
         }
 
         for(var valueIndex in data['value'])
@@ -187,6 +238,34 @@ async function GetCountFromApi(collection)
             return data.json();
         }).then(function(data){
             //console.log(data)
+            return data;
+        });
+}
+
+async function UpdateFromApi(collection, itemUpdated)
+{
+    // TODO check to see if accessToken is valid
+    var accessToken = settingsStorage.getItem('AccessToken');
+
+	const updateRequest = {
+		method: 'PATCH',
+		headers: {
+            'Content-Type': 'application/json',
+			'Authorization': "Bearer " + accessToken,
+			'Host': 'graph.microsoft.com',
+        },
+        body: JSON.stringify(itemUpdated),
+    };
+
+    console.log(JSON.stringify(updateRequest))
+
+    var endpointUrl = 'https://graph.microsoft.com/beta/me/outlook/' + 
+        collection.endpointName;
+    
+    return await fetch(endpointUrl, updateRequest).then(function(data){
+            return data.json();
+        }).then(function(data){
+            console.log(JSON.stringify(data))
             return data;
         });
 }

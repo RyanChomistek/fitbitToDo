@@ -1,29 +1,118 @@
 import { CLIENT_ID, SCOPES, AUTHORIZE_URL } from "../common/constants";
 
+function HasValidTokenState(props)
+{
+	var timeNow = new Date();
+    var experationTime = props.settingsStorage.getItem('TokenExpirationDate');
+	var expiresIn = props.settingsStorage.getItem('TokenExpiresIn');
+	
+	var percentOfTimeLeft = (experationTime - timeNow) / expiresIn;
+	//console.log(`${experationTime} ${expiresIn} ${percentOfTimeLeft < .1}`)
+	return percentOfTimeLeft > .1;
+}
+
+function Logout(props)
+{
+	console.log('LOGGING OUT ++++++++++++++ ' + props.settingsStorage.getItem('IsLoggedIn'));
+	props.settingsStorage.setItem('IsLoggedIn', 'false');
+	props.settingsStorage.setItem('IdInformation', "");
+    props.settingsStorage.setItem('AccessToken', "");
+    props.settingsStorage.setItem('RefreshToken', "");
+	props.settingsStorage.setItem('TokenExpiresIn', "");
+	props.settingsStorage.setItem('TokenExpirationDate', "");
+	props.settingsStorage.setItem('TokenGenerationDate', "");
+}
+
+function GetLoginSection(props)
+{
+	return (
+	<Section
+		description= {<Text> {`Click the above to log in`} </Text>}
+		title={<Text bold align="center">Microsoft Account</Text>}>
+		<Oauth
+			settingsKey="oauth"
+			title="Microsoft Login"
+			label="Microsoft Login"
+			status={'Login'}
+			authorizeUrl={AUTHORIZE_URL}
+			clientId={CLIENT_ID}
+			scope={SCOPES}
+			onReturn={ async (data) => { 
+				console.log(data.code)
+				props.settingsStorage.setItem("excode", data.code) 
+			}}
+		/>
+	</Section>
+	);
+}
+
+function GetLogoutSection(props)
+{
+	let idInfo = JSON.parse(props.settingsStorage.getItem("IdInformation"));
+
+	return (
+		<Section
+			description= {<Text> {`Logged in as ${idInfo.userSigninName}`} </Text>}
+			title={<Text bold align="center">Microsoft Account</Text>}>
+			<Button
+				label={`Logout`}
+				onClick={ () => {Logout(props)}}
+		  	/>
+		</Section>
+		);
+}
+
+function ClearAllInformation(props)
+{
+	Logout(props);
+	props.settingsStorage.clear();
+	props.settingsStorage.setItem('ClearAllInfo', 'true');
+}
+
 function mySettings(props) {
+	let hasValidToken = HasValidTokenState(props);
+
+	let microsoftAccountSection;
+
+	if(hasValidToken)
+	{
+		microsoftAccountSection = GetLogoutSection(props);
+	}
+	else
+	{
+		microsoftAccountSection = GetLoginSection(props)
+	}
+
 	return (
 		<Page>
+			{microsoftAccountSection}
 			<Section
-				title={<Text bold align="center">Fitbit Account</Text>}>
-				<Oauth
-					settingsKey="oauth"
-					title="OAuth Login"
-					label="OAuth"
-					status="Login"
-					authorizeUrl={AUTHORIZE_URL}
-					clientId={ CLIENT_ID }
-					scope={SCOPES}
-					//scope="openid profile User.Read Mail.Read"
-					onReturn={ async (data) => { 
-						//console.log(JSON.stringify(data));
-						props.settingsStorage.setItem("excode", data.code) 
-					}}
+				title={<Text bold align="center"> Color Options </Text>}>
+				<Text align="left"> Text Color </Text>
+				<ColorSelect
+					settingsKey="NormalColorChanged"
+					label="Normal Text Color"
+					colors={[
+						{color: 'tomato'},
+						{color: 'sandybrown'},
+						{color: 'gold'},
+						{color: 'aquamarine'},
+						{color: 'deepskyblue'},
+						{color: 'plum'},
+						{color: 'azure'},
+						{color: 'firebrick'},
+						{color: 'lightsteelblue'},
+						{color: 'palevioletred'},
+						{color: 'olivedrab'},
+						{color: 'mediumturquoise'},
+					]}
 				/>
-
-			<Button
-				label="Button"
-				onClick={() => props.settingsStorage.setItem("refresh_token", 'true')}
-			/>
+			</Section>
+			<Section description='Use this to clear all information from this companion and any attached devices, will log you out.'>
+				<Button
+					label={`Clear All Local Info`}
+					onClick={ () => {ClearAllInformation(props)}}
+				/>
 			</Section>
 		</Page>
 	);

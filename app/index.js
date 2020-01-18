@@ -1,62 +1,78 @@
 import document from "document";
 import { inbox, outbox } from "file-transfer";
+import { memory } from "system";
+import { readFileSync, unlinkSync, existsSync} from 'fs';
 
-import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen} from "../app/ViewSwitch";
+import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen, ChangeColor, GetCurrentScreen} from "../app/ViewSwitch";
 import { taskFolderDataStreamer, taskDataStreamer } from "../app/DataStreamer";
-
 import { dumpObject } from './util';
 import {SetupTaskList} from './StreamingVirtualTable';
+import {DeviceFileNames} from '../common/constants'
+import {NetworkEventHandler} from './FileIO'
 
 var waitingForTaskFolderCollectionFileToTransition = true;
 var waitingForTaskCollectionFileToTransition = false;
 
+//
 taskFolderDataStreamer.RequestNewCollection({});
+//loadingScreen.SetText('Loading Task Folders')
 
-// Event occurs when new file(s) are received
-inbox.onnewfile = function () {
-	var fileName;
-	do 
+NetworkEventHandler.AddEventHandler('TaskFoldersCollection', (fileName, eventData) => {
+	taskFolderDataStreamer.LoadFromFileSync(fileName);
+	if(waitingForTaskFolderCollectionFileToTransition)
 	{
-		// If there is a file, move it from staging into the application folder
-		fileName = inbox.nextFile();
-		
-		if (fileName) {
-			console.log(fileName);
-			if (fileName == 'TaskFoldersCollection') {
-				//var taskFoldersCollection = readFileSync(fileName, "cbor");
-				taskFolderDataStreamer.LoadFromFileSync(fileName);
-				if(waitingForTaskFolderCollectionFileToTransition)
-				{
-					waitingForTaskFolderCollectionFileToTransition = false;
-					RenderTaskFolders()
-				}
-			}
+		waitingForTaskFolderCollectionFileToTransition = false;
+		RenderTaskFolders();
+	}
+});
 
-			if (fileName == 'TaskCollection') {
-				taskDataStreamer.LoadFromFileSync(fileName);
-				if(waitingForTaskCollectionFileToTransition)
-				{
-					waitingForTaskCollectionFileToTransition = false;
-					renderTaskScreen();
-				}
-				else
-				{
-					// already rendering task view
-					//dumpObject(VTList)
-					let VTList = document.getElementById("checkbox-list");
-					VTList.value = 0;
-					VTList.redraw();
-				}
-			}
+NetworkEventHandler.AddEventHandler('TaskCollection', (fileName, eventData) => {
+	taskDataStreamer.LoadFromFileSync(fileName);
+	if(waitingForTaskCollectionFileToTransition)
+	{
+		waitingForTaskCollectionFileToTransition = false;
+		renderTaskScreen();
+	}
+	else if(GetCurrentScreen() == tasksScreen)
+	{
+		// already rendering task view
+		let VTList = document.getElementById("checkbox-list");
+		SetupTaskList()
+		VTList.value = 0;
+		VTList.redraw();
+	}
+});
 
+NetworkEventHandler.AddEventHandler('NormalColorChanged', (fileName, eventData) => {
+	let color = readFileSync(fileName, "cbor");
+	console.log(JSON.parse(color) + " " + JSON.stringify(color));
+	ChangeColor(JSON.parse(color));
+});
+
+NetworkEventHandler.AddEventHandler('NormalColorChanged', (fileName, eventData) => {
+	let color = readFileSync(fileName, "cbor");
+	console.log(JSON.parse(color) + " " + JSON.stringify(color));
+	ChangeColor(JSON.parse(color));
+});
+
+NetworkEventHandler.AddEventHandler('ClearAllInfo', (fileName, eventData) => {
+	for(let i = 0; i < DeviceFileNames.length; i++)
+	{
+		if(existsSync(DeviceFileNames[i]))
+		{
+			unlinkSync(DeviceFileNames[i]);
 		}
-	} while (fileName);
-};
+	}
+});
 
 document.onkeypress = function(e) {
 	//console.log("Key pressed: " + e.key);
 	e.preventDefault();
 	if (e.key==="back") {
+		// these will assume the loading screen is up, if we back out and dont reset these wewill exit the app when the new info comes in
+		waitingForTaskFolderCollectionFileToTransition = false;
+		waitingForTaskCollectionFileToTransition = false;
+
 		PopScreen();
 	}
 }
@@ -70,6 +86,8 @@ function RenderTaskFolders()
 
 function renderTaskScreen()
 {
+	// pop the loading screen
+	PopScreen();
 	PushScreen(tasksScreen);
 	let VTList = document.getElementById("checkbox-list");
 	console.log("++++$$$$$$$$$$$$$$$$$$$" + JSON.stringify(taskDataStreamer.GetCollectionLength()))
@@ -101,9 +119,11 @@ function SetUpTaskFolderList()
 				var id = taskFolderDataStreamer.GetFromCollection(info.index).id;
 				
 				// send message back to the host with id
-				console.log('requesting new collection ' + id.length)
+				//console.log('requesting new collection ' + id.length)
 				taskDataStreamer.RequestNewCollection({id:id});
 				waitingForTaskCollectionFileToTransition = true;
+				loadingScreen.SetText(`Loading: ${info.value}`)
+				PushScreen(loadingScreen);
 			};
 		  }
 		}
@@ -112,9 +132,16 @@ function SetUpTaskFolderList()
 	VTList.length = taskFolderDataStreamer.GetCollectionLength();
 }
 
-let btnBR = document.getElementById("LoadMoreBottom");
-btnBR.onactivate = function(evt) {
+let btnBottom = document.getElementById("LoadMoreBottom");
+btnBottom.onactivate = function(evt) {
 	var id = taskDataStreamer.collection.id;
 	console.log(id)
 	taskDataStreamer.RequestNewCollection({id:id}, taskDataStreamer.endIndex)
+}
+
+let btnTop = document.getElementById("LoadMoreTop");
+btnTop.onactivate = function(evt) {
+	var id = taskDataStreamer.collection.id;
+	console.log(id);
+	taskDataStreamer.RequestNewCollection({id:id}, taskDataStreamer.startIndex - taskDataStreamer.maxSize);
 }
