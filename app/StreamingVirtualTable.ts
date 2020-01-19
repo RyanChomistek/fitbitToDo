@@ -1,20 +1,26 @@
 import document from "document";
-import { taskFolderDataStreamer, taskDataStreamer } from "../app/DataStreamer";
+import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 
 import { StatusMap } from "../common/constants";
 import { dumpObject } from "./util"
 var tileTaskListManager = CreateTileListManager();
 
-function CreateTileListManager(tileListId)
+function CreateTileListManager()
 {
     let VTList = document.getElementById("tileListId");
 }
 
 let buttonPoll;
+let loadTop = document.getElementById("LoadMoreTop") as GraphicsElement;
+let loadBottom = document.getElementById("LoadMoreBottom") as GraphicsElement;
 
 export function EnableStreamingVirtualList()
 {
-	let VTList = document.getElementById("checkbox-list");
+	let VTList = document.getElementById("checkbox-list") as VirtualTileList<{
+		type: string;
+		value: string;
+		index: number;
+	}>;
 
 	// we have to poll every 100ms to see if we can see the top or the bottom of the list
 	// If anyone discovers a way to do this via event please refactor this
@@ -24,20 +30,20 @@ export function EnableStreamingVirtualList()
 		// if we are showing the first local element, and the first element is not the first batch
 		if(VTList.firstVisibleTile == 0 && taskDataStreamer.startIndex != 0)
 		{
-			document.getElementById("LoadMoreTop").style.display = "inline";
-			document.getElementById("LoadMoreBottom").style.display = "none";
+			loadTop.style.display = "inline";
+			loadBottom.style.display = "none";
 		}
 		// if we are showing the last local and there is another batch
 		else if(VTList.lastVisibleTile >= taskDataStreamer.maxSize - 3 && taskDataStreamer.endIndex < taskDataStreamer.GetCollectionLength() - 1)
 		{
-			document.getElementById("LoadMoreTop").style.display = "none";
-			document.getElementById("LoadMoreBottom").style.display = "inline";
+			loadTop.style.display = "none";
+			loadBottom.style.display = "inline";
 		}
 		// We're somewhere in the middle
 		else
 		{
-			document.getElementById("LoadMoreTop").style.display = "none";
-			document.getElementById("LoadMoreBottom").style.display = "none";
+			loadTop.style.display = "none";
+			loadBottom.style.display = "none";
 		}
 	}, 100);
 
@@ -46,15 +52,17 @@ export function EnableStreamingVirtualList()
 export function disableStreamingVirtualList()
 {
 	clearInterval(buttonPoll);
-	document.getElementById("LoadMoreBottom").style.display = "none";
-    document.getElementById("LoadMoreTop").style.display = "none";
+	loadBottom.style.display = "none";
+    loadTop.style.display = "none";
 }
 
 export function SetupTaskList()
 {
-    // have 2 blocks of the tumber 
     //the current block and the next block, whenever we get close to either end of the 
-	let VTList = document.getElementById("checkbox-list");
+	let VTList = document.getElementById("checkbox-list") as VirtualTileList<{
+		type: string;
+		index: number;
+	}>;
 	
 	VTList.delegate = {
 		getTileInfo: function(index) {

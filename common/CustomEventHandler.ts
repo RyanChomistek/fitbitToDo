@@ -48,11 +48,18 @@ export class CustomEventHandler
                 let event: CustomEvent;
                 event = events[i];
                 event.Callback(name, eventData);
+
+                if(event.HitsBeforeDeath == -1)
+                {
+                    continue;
+                }
+
                 event.HitsBeforeDeath--;
 
-                if(events[i].HitsBeforeDeath <= 0)
+                if(event.HitsBeforeDeath <= 0)
                 {
                     events.splice(i,1);
+                    i--;
                 }
             }
         }

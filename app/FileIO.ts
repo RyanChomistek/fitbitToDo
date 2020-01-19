@@ -1,5 +1,6 @@
 import { inbox, outbox } from "file-transfer";
 import {CustomEventHandler} from '../common/CustomEventHandler'
+import { memory } from 'system';
 
 export let NetworkEventHandler = new CustomEventHandler();
 

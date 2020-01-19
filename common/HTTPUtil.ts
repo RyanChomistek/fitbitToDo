@@ -1,4 +1,4 @@
-export function urlEncodeObject(object) 
+export function urlEncodeObject(object) : string
 {
 	let fBody = [];
 	for (let prop in object) {
@@ -7,6 +7,5 @@ export function urlEncodeObject(object)
 		fBody.push(key + "=" + value);
 		}
 		
-	fBody = fBody.join("&");
-	return fBody;
+	return fBody.join("&");
 };

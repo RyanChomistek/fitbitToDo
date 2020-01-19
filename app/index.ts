@@ -3,8 +3,8 @@ import { inbox, outbox } from "file-transfer";
 import { memory } from "system";
 import { readFileSync, unlinkSync, existsSync} from 'fs';
 
-import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen, ChangeColor, GetCurrentScreen} from "../app/ViewSwitch";
-import { taskFolderDataStreamer, taskDataStreamer } from "../app/DataStreamer";
+import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen, ChangeColor, GetCurrentScreen} from "./ViewSwitch";
+import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 import { dumpObject } from './util';
 import {SetupTaskList} from './StreamingVirtualTable';
 import {DeviceFileNames} from '../common/constants'
@@ -28,6 +28,7 @@ NetworkEventHandler.AddEventHandler('TaskFoldersCollection', (fileName, eventDat
 
 NetworkEventHandler.AddEventHandler('TaskCollection', (fileName, eventData) => {
 	taskDataStreamer.LoadFromFileSync(fileName);
+
 	if(waitingForTaskCollectionFileToTransition)
 	{
 		waitingForTaskCollectionFileToTransition = false;
@@ -36,17 +37,16 @@ NetworkEventHandler.AddEventHandler('TaskCollection', (fileName, eventData) => {
 	else if(GetCurrentScreen() == tasksScreen)
 	{
 		// already rendering task view
-		let VTList = document.getElementById("checkbox-list");
+		let VTList = document.getElementById("checkbox-list") as VirtualTileList<{
+			type: string;
+			value: string;
+			index: number;
+		}>;
+		
 		SetupTaskList()
 		VTList.value = 0;
 		VTList.redraw();
 	}
-});
-
-NetworkEventHandler.AddEventHandler('NormalColorChanged', (fileName, eventData) => {
-	let color = readFileSync(fileName, "cbor");
-	console.log(JSON.parse(color) + " " + JSON.stringify(color));
-	ChangeColor(JSON.parse(color));
 });
 
 NetworkEventHandler.AddEventHandler('NormalColorChanged', (fileName, eventData) => {
@@ -80,8 +80,13 @@ document.onkeypress = function(e) {
 function RenderTaskFolders()
 {
 	PushScreen(taskFolderScreen);
-	let VTList = document.getElementById("my-list");
-	VTList.length = taskFolderDataStreamer.GetLocalCollectionLength();
+	let VTList = document.getElementById("my-list") as VirtualTileList<{
+		type: string;
+		index: number;
+	}>;
+
+	// hack to se the length
+	(<any> VTList).length = taskFolderDataStreamer.GetLocalCollectionLength();
 }
 
 function renderTaskScreen()
@@ -90,8 +95,9 @@ function renderTaskScreen()
 	PopScreen();
 	PushScreen(tasksScreen);
 	let VTList = document.getElementById("checkbox-list");
-	console.log("++++$$$$$$$$$$$$$$$$$$$" + JSON.stringify(taskDataStreamer.GetCollectionLength()))
-	VTList.length = taskDataStreamer.GetLocalCollectionLength();
+
+	//console.log("++++$$$$$$$$$$$$$$$$$$$" + JSON.stringify(taskDataStreamer.GetCollectionLength()))
+	(<any> VTList).length = taskDataStreamer.GetLocalCollectionLength();
 }
 
 // setup the list ui's
@@ -100,7 +106,11 @@ SetupTaskList();
 
 function SetUpTaskFolderList()
 {
-	let VTList = document.getElementById("my-list");
+	let VTList = document.getElementById("my-list") as VirtualTileList<{
+		type: string;
+		value: string;
+		index: number;
+	}>;
 	
 	VTList.delegate = {
 		getTileInfo: function(index) {

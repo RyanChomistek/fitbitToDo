@@ -5,7 +5,8 @@
   "license": "UNLICENSED",
   "devDependencies": {
     "@fitbit/sdk": "~4.1.0",
-    "@fitbit/sdk-cli": "^1.7.1"
+    "@fitbit/sdk-cli": "^1.7.1",
+    "fitbit-sdk-types": "^4.3.2"
   },
   "fitbit": {
     "appUUID": "0f6ae7fd-5110-47f5-8211-ba65ce4dfec8",
@@ -13,7 +14,9 @@
     "appDisplayName": "Fitbittodo",
     "iconFile": "resources/icon.png",
     "wipeColor": "#ffffff",
-    "requestedPermissions": ["access_internet"],
+    "requestedPermissions": [
+      "access_internet"
+    ],
     "buildTargets": [
       "higgs",
       "meson",

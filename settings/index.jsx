@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { CLIENT_ID, SCOPES, AUTHORIZE_URL } from "../common/constants";
 
 function HasValidTokenState(props)

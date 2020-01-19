@@ -1,27 +1,27 @@
-import { CLIENT_ID, CLIENT_SECRET, TOKEN_URL, AUTHORIZE_URL, REDIRECT_URI, SCOPES} from "../common/constants";
+import { CLIENT_ID, CLIENT_SECRET, TOKEN_URL, AUTHORIZE_URL, REDIRECT_URI, SCOPES} from "../common/Constants";
 import { settingsStorage } from "settings";
 
-import {KJUR, b64utoutf8} from '../companion/KJUR'
+import {KJUR, b64utoutf8} from './KJUR'
 import {urlEncodeObject} from "../common/HTTPUtil"
 
 export function HasValidTokenState()
 {
-	var timeNow = new Date();
-    var experationTime = settingsStorage.getItem('TokenExpirationDate');
-    var expiresIn = settingsStorage.getItem('TokenExpiresIn');
-	var percentOfTimeLeft = (experationTime - timeNow) / expiresIn;
-	console.log(`has valid token ${percentOfTimeLeft > .1}`)
+	let timeNow: number = new Date().getTime();
+    let experationTime: number = parseInt(settingsStorage.getItem('TokenExpirationDate'));
+    let expiresIn: number = parseInt(settingsStorage.getItem('TokenExpiresIn'));
+	let percentOfTimeLeft: number = (experationTime - timeNow) / expiresIn;
+	console.log(`time Left before token expires ${percentOfTimeLeft}`)
 	return percentOfTimeLeft > .1;
 }
 
 export async function EnsureTokenState()
 {
-	console.log(`access token ${settingsStorage.getItem('AccessToken')} ++++++++++++++++++++++++++++++++++++++')`)
-	console.log(`access token ${settingsStorage.getItem('AccessToken') == undefined} ++++++++++++++++++++++++++++++++++++++')`)
+	//console.log(`access token ${settingsStorage.getItem('AccessToken')} ++++++++++++++++++++++++++++++++++++++')`)
+	//console.log(`access token ${settingsStorage.getItem('AccessToken') == undefined} ++++++++++++++++++++++++++++++++++++++')`)
 	//do we even have a token
 	if(settingsStorage.getItem('AccessToken') == undefined)
 	{
-		console.log('asdasdasdasdasd++++++++++++++++++++++++++++++++++++++')
+		//console.log('asdasdasdasdasd++++++++++++++++++++++++++++++++++++++')
 		throw 'no AccessToken, user has not logged in yet';
 	}
 
@@ -38,19 +38,27 @@ export async function EnsureTokenState()
 
 export async function GetToken(exchangeCode) 
 {
+	const body = urlEncodeObject({
+		grant_type: "authorization_code",
+		code: exchangeCode,
+		redirect_uri: REDIRECT_URI,
+		client_id: CLIENT_ID,
+	});
+
+	const headers = new Headers({
+		'Content-Type': 'application/x-www-form-urlencoded',
+		'Host': 'login.microsoftonline.com'
+	});
+
+	const method = 'POST';
+
 	const Token_Body = {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-			'Host': 'login.microsoftonline.com'
-		},
-		body: urlEncodeObject({
-			grant_type: "authorization_code",
-			code: exchangeCode,
-			redirect_uri: REDIRECT_URI,
-            client_id: CLIENT_ID,
-		})
-	};
+		body: body, 
+		headers: headers, 
+		method: method
+	} as RequestInit;
+
+	
 	
 	console.log(`token request ${exchangeCode}`)
 	console.trace();
@@ -99,6 +107,18 @@ async function RefreshToken()
         });
 }
 
+class IdInfo
+{
+	constructor(
+		public userDisplayName,
+		public userSigninName,
+		public userDomainType
+	)
+	{
+
+	}
+}
+
 function ExtractTokenResposeInfo(tokenResponse)
 {
     console.log('R Result headers:\n'+ JSON.stringify(Object.keys(tokenResponse)));
@@ -108,15 +128,15 @@ function ExtractTokenResposeInfo(tokenResponse)
     //console.log(JSON.stringify(id));
 
 	// IMPORTANT if you add any new settings here make sure to clear them out in login (in ../settings/index.js)
-	settingsStorage.setItem('IsLoggedIn', true);
+	settingsStorage.setItem('IsLoggedIn', JSON.stringify(true));
     settingsStorage.setItem('IdInformation', JSON.stringify(id));
     settingsStorage.setItem('AccessToken', tokenResponse.access_token);
     settingsStorage.setItem('RefreshToken', tokenResponse.refresh_token);
-    settingsStorage.setItem('TokenExpiresIn', parseInt(tokenResponse.expires_in) * 1000);
+    settingsStorage.setItem('TokenExpiresIn', JSON.stringify(parseInt(tokenResponse.expires_in) * 1000));
 
     var timeNow = new Date();
     var expirationDate = new Date(timeNow.getTime() + parseInt(tokenResponse.expires_in) * 1000);
-    settingsStorage.setItem('TokenExpirationDate', expirationDate.getTime());
+    settingsStorage.setItem('TokenExpirationDate', JSON.stringify(expirationDate.getTime()));
     settingsStorage.setItem('TokenGenerationDate', timeNow.toISOString());
 }
 
@@ -177,15 +197,15 @@ function validateIdToken(idToken) {
 	
 		// Now that we've passed our checks, save the bits of data
 		// we need from the token.
-		var sessionStorage = new Object();
-		sessionStorage.userDisplayName = payload.name;
-		sessionStorage.userSigninName = payload.preferred_username;
+		let userDisplayName = payload.name;
+		let userSigninName = payload.preferred_username;
 	
 		// Per the docs at:
 		// https://docs.microsoft.com/azure/active-directory/develop/v2-oauth2-implicit-grant-flow#send-the-sign-in-request
 		// Check if this is a consumer account so we can set domain_hint properly
-		sessionStorage.userDomainType =
+		let userDomainType =
 			payload.tid === '9188040d-6c67-4c5b-b112-36a304b66dad' ? 'consumers' : 'organizations';
 	
+		var sessionStorage = new IdInfo(userDisplayName, userSigninName, userDomainType);
         return sessionStorage;
 	}
