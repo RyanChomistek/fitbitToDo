@@ -3,6 +3,7 @@ import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 
 import { StatusMap } from "../common/constants";
 import { dumpObject } from "./util"
+import { UpdateCollectionRquest } from '../common/Collection'
 var tileTaskListManager = CreateTileListManager();
 
 function CreateTileListManager()
@@ -92,12 +93,10 @@ export function SetupTaskList()
 					let id = task.id;
 					task.status = !task.status;
 
-					taskDataStreamer.UpdateItem({
-						id:id,
-						itemUpdated:{
-							status: StatusMap[task.status],
-						}
-					});
+					taskDataStreamer.UpdateItem(new UpdateCollectionRquest(
+						{status: StatusMap[task.status]},
+						id
+					));
 				};
 			}
 		}

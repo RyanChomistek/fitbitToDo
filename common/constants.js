@@ -24,6 +24,9 @@ export const StatusMap = {
     true: "Completed"
 }
 
+// Named Collection Ids
+export const TaskFolderCollectionId = 1;
+
 // DEVICE ONLY
 export const TextColorFileName = "TextColor.txt";
 export const DeviceFileNames = [TextColorFileName];

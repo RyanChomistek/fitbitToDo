@@ -1,9 +1,10 @@
 import { outbox } from "file-transfer";
-import { readFileSync} from 'fs';
+import { readFileSync, writeFileSync, existsSync, closeSync } from 'fs';
 
 import { encode, decode } from 'cbor';
 import { RequestTypes, EntityTypes } from '../common/constants'
-import {Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection} from '../common/Collection'
+import {Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection, CollectionRquest, UpdateCollectionRquest } from '../common/Collection'
+import { NetworkEventHandler } from './FileIO'
 
 class DataStreamer <Item extends CollectionItem, DataCollection extends Collection<Item>>
 {
@@ -19,14 +20,41 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
         public updateResponseName = 'default',
         public maxSize = 25,
         public startIndex = 0,
-        public endIndex = 0)
+        public endIndex = 0,
+        public cacheLoadEventName = 'default')
     {
     }
 
-    public RequestNewCollection(requestPayload: any, skip = 0)
+    public GetCacheFileName(collectionId: number, skip: number, top: number)
     {
-        requestPayload.s = skip;
-        requestPayload.t = this.maxSize;
+        return `dataCache_${collectionId}_${skip}_${top}.bin`;
+    }
+
+    public TryGetCollectionFromCache(requestPayload: CollectionRquest)
+    {
+        let cacheFileName = this.GetCacheFileName(requestPayload.id, requestPayload.skip, requestPayload.top);
+        if(!existsSync(cacheFileName))
+        {
+            return false;
+        }
+
+        // fire off a file event like if we had recieved this from the companion
+        console.log(`LOADING FROM CACHE ${this.cacheLoadEventName} ${cacheFileName}`)
+        NetworkEventHandler.Invoke(this.cacheLoadEventName, cacheFileName);
+
+        return true;
+    }
+
+    public RequestNewCollection(requestPayload: CollectionRquest, skip = 0)
+    {
+        requestPayload.skip = skip;
+        requestPayload.top = this.maxSize;
+
+        if(this.TryGetCollectionFromCache(requestPayload))
+        {
+            // we found a valid chached item go ahead let it load that
+            return;
+        }
 
         requestPayload.resName = this.getResponseName;
         requestPayload.entityType = this.entityType;
@@ -48,8 +76,18 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
     {
         let rawData = readFileSync(fileName, "cbor");
         console.log(`${Object.keys(rawData)} ${rawData.id} | ${JSON.stringify(rawData)}`);
+        this.LoadFromObject(rawData);
+    }
 
+    public LoadFromObject(rawData: any)
+    {
         this.collection = rawData;
+
+        // Should probably add a time stamp
+
+        // Save collection to file
+        writeFileSync(this.GetCacheFileName(this.collection.id, this.collection.skip, this.collection.top), this.collection, 'cbor')
+
         this.startIndex = this.collection.skip;
         this.endIndex = this.collection.skip + this.collection.top;
         console.log(this.startIndex + " " + this.endIndex )
@@ -80,7 +118,7 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
         return 0;
     }
 
-    public UpdateItem(requestPayload: any): void
+    public UpdateItem(requestPayload: UpdateCollectionRquest): void
     {
         console.log(JSON.stringify(requestPayload));
         requestPayload.reqType = RequestTypes.Update;
@@ -105,6 +143,8 @@ export class TaskFolderDataStreamer
         this.getRequestName = 'RequestTaskFolders';
         this.getResponseName = 'TaskFoldersCollection';
         this.entityType = EntityTypes.TaskFolders;
+
+        this.cacheLoadEventName = 'TaskFoldersCollection';
     }
 }
 
@@ -121,6 +161,8 @@ export class TaskDataStreamer
         this.updateEntityType = EntityTypes.Task;
         this.updateRequestName = 'UpdateTask';
         this.updateResponseName = 'UpdatedTask';
+
+        this.cacheLoadEventName = 'TaskCollection';
     }
 }
 

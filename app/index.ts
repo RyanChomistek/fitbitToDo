@@ -6,18 +6,20 @@ import { readFileSync, unlinkSync, existsSync} from 'fs';
 import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen, ChangeColor, GetCurrentScreen} from "./ViewSwitch";
 import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 import { dumpObject } from './util';
-import {SetupTaskList} from './StreamingVirtualTable';
-import {DeviceFileNames} from '../common/constants'
-import {NetworkEventHandler} from './FileIO'
+import { SetupTaskList } from './StreamingVirtualTable';
+import { DeviceFileNames, TaskFolderCollectionId } from '../common/constants'
+import { NetworkEventHandler } from './FileIO'
+import { CollectionRquest } from "../common/Collection"
 
 var waitingForTaskFolderCollectionFileToTransition = true;
 var waitingForTaskCollectionFileToTransition = false;
 
 //
-taskFolderDataStreamer.RequestNewCollection({});
+
 //loadingScreen.SetText('Loading Task Folders')
 
-NetworkEventHandler.AddEventHandler('TaskFoldersCollection', (fileName, eventData) => {
+NetworkEventHandler.AddEventHandler('TaskFoldersCollection', (eventName, fileName) => {
+	console.log(`event ${eventName} ${fileName}`)
 	taskFolderDataStreamer.LoadFromFileSync(fileName);
 	if(waitingForTaskFolderCollectionFileToTransition)
 	{
@@ -26,9 +28,9 @@ NetworkEventHandler.AddEventHandler('TaskFoldersCollection', (fileName, eventDat
 	}
 });
 
-NetworkEventHandler.AddEventHandler('TaskCollection', (fileName, eventData) => {
+NetworkEventHandler.AddEventHandler('TaskCollection', (eventName, fileName) => {
+	console.log(`event ${eventName} ${fileName}`)
 	taskDataStreamer.LoadFromFileSync(fileName);
-
 	if(waitingForTaskCollectionFileToTransition)
 	{
 		waitingForTaskCollectionFileToTransition = false;
@@ -49,13 +51,13 @@ NetworkEventHandler.AddEventHandler('TaskCollection', (fileName, eventData) => {
 	}
 });
 
-NetworkEventHandler.AddEventHandler('NormalColorChanged', (fileName, eventData) => {
+NetworkEventHandler.AddEventHandler('NormalColorChanged', (eventName, fileName) => {
 	let color = readFileSync(fileName, "cbor");
 	console.log(JSON.parse(color) + " " + JSON.stringify(color));
 	ChangeColor(JSON.parse(color));
 });
 
-NetworkEventHandler.AddEventHandler('ClearAllInfo', (fileName, eventData) => {
+NetworkEventHandler.AddEventHandler('ClearAllInfo', (eventName, fileName) => {
 	for(let i = 0; i < DeviceFileNames.length; i++)
 	{
 		if(existsSync(DeviceFileNames[i]))
@@ -76,6 +78,8 @@ document.onkeypress = function(e) {
 		PopScreen();
 	}
 }
+
+taskFolderDataStreamer.RequestNewCollection(new CollectionRquest(TaskFolderCollectionId));
 
 function RenderTaskFolders()
 {
@@ -125,15 +129,14 @@ function SetUpTaskFolderList()
 			tile.getElementById("text").text = `${info.value}`;
 			let touch = tile.getElementById("touch-me");
 			touch.onclick = evt => {
-			  	// get id
-				var id = taskFolderDataStreamer.GetFromCollection(info.index).id;
-				
-				// send message back to the host with id
-				//console.log('requesting new collection ' + id.length)
-				taskDataStreamer.RequestNewCollection({id:id});
 				waitingForTaskCollectionFileToTransition = true;
 				loadingScreen.SetText(`Loading: ${info.value}`)
 				PushScreen(loadingScreen);
+
+				// get id
+				var id = taskFolderDataStreamer.GetFromCollection(info.index).id;
+				// send message back to the host with id
+				taskDataStreamer.RequestNewCollection(new CollectionRquest(id));
 			};
 		  }
 		}
@@ -146,12 +149,12 @@ let btnBottom = document.getElementById("LoadMoreBottom");
 btnBottom.onactivate = function(evt) {
 	var id = taskDataStreamer.collection.id;
 	console.log(id)
-	taskDataStreamer.RequestNewCollection({id:id}, taskDataStreamer.endIndex)
+	taskDataStreamer.RequestNewCollection(new CollectionRquest(id), taskDataStreamer.endIndex)
 }
 
 let btnTop = document.getElementById("LoadMoreTop");
 btnTop.onactivate = function(evt) {
 	var id = taskDataStreamer.collection.id;
 	console.log(id);
-	taskDataStreamer.RequestNewCollection({id:id}, taskDataStreamer.startIndex - taskDataStreamer.maxSize);
+	taskDataStreamer.RequestNewCollection(new CollectionRquest(id), taskDataStreamer.startIndex - taskDataStreamer.maxSize);
 }

@@ -8,7 +8,7 @@ import { EnsureTokenState } from './Authentication'
 import { Login, User, ApiCollection } from "../companion/TaskApi";
 import { RequestTypes, EntityTypes } from '../common/constants'
 import { MemSizeAprox } from '../common/MemSize'
-import { Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection } from '../common/Collection'
+import { Collection, CollectionItem, CollectionRquest, UpdateCollectionRquest } from '../common/Collection'
 
 console.log('here')
 
@@ -74,7 +74,7 @@ async function processAllFiles() {
 		if(fileName == 'RequestTasksInFolder' || fileName == "RequestTaskFolders" || fileName == 'UpdateTask')
 		{
 			console.log(payload)
-			let apiRequest = JSON.parse(payload)
+			let apiRequest: CollectionRquest = JSON.parse(payload)
 			let user: User = null;
 			try
 			{
@@ -111,7 +111,7 @@ inbox.addEventListener("newfile", processAllFiles);
 // Also process any files that arrived when the companion wasn’t running
 processAllFiles()
 
-async function HandleApiRequestFromDevice<Item, CompressedItem extends CollectionItem>(apiRequest, collection: ApiCollection<Item, CompressedItem>)
+async function HandleApiRequestFromDevice<Item, CompressedItem extends CollectionItem>(apiRequest: CollectionRquest, collection: ApiCollection<Item, CompressedItem>)
 {
 	// make sure we have a good session token
 	EnsureTokenState();
@@ -122,19 +122,19 @@ async function HandleApiRequestFromDevice<Item, CompressedItem extends Collectio
 	}
 	else if(apiRequest.reqType == RequestTypes.Update)
 	{
-		HandleApiUpdateRequests(apiRequest, collection);
+		HandleApiUpdateRequests(<UpdateCollectionRquest> apiRequest, collection);
 	}
 }
 
-async function HandleApiGetRequests<Item, CompressedItem extends CollectionItem>(apiRequest, collection: ApiCollection<Item, CompressedItem>)
+async function HandleApiGetRequests<Item, CompressedItem extends CollectionItem>(apiRequest: CollectionRquest, collection: ApiCollection<Item, CompressedItem>)
 {
-	collection = await collection.Get(apiRequest.s, apiRequest.t);
+	collection = await collection.Get(apiRequest.skip, apiRequest.top);
 
 	var compressedCollection = collection.CompressCollection();
 
 	compressedCollection.count = await collection.Count();
-	compressedCollection.skip = apiRequest.s;
-	compressedCollection.top = apiRequest.t;
+	compressedCollection.skip = apiRequest.skip;
+	compressedCollection.top = apiRequest.top;
 
 	console.log(`collection : ${JSON.stringify(compressedCollection)}`)
 	console.log(`response size ${MemSizeAprox(compressedCollection)}`)
@@ -149,7 +149,7 @@ async function HandleApiGetRequests<Item, CompressedItem extends CollectionItem>
 	  })
 }
 
-async function HandleApiUpdateRequests(apiRequest, collection)
+async function HandleApiUpdateRequests<Item, CompressedItem extends CollectionItem>(apiRequest: UpdateCollectionRquest, collection: ApiCollection<Item, CompressedItem>)
 {
 	console.log(`update ${JSON.stringify(apiRequest)} \n ${JSON.stringify(collection)}`)
 	let result = await collection.Update(apiRequest.itemUpdated);
