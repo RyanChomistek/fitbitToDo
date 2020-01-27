@@ -10,8 +10,6 @@ import { RequestTypes, EntityTypes } from '../common/constants'
 import { MemSizeAprox } from '../common/MemSize'
 import { Collection, CollectionItem, CollectionRquest, UpdateCollectionRquest } from '../common/Collection'
 
-console.log('here')
-
 function SendMessage(messageTitle, messageBody)
 {
 	outbox.enqueue(messageTitle, encode(messageBody)).then((ft) => {
@@ -56,6 +54,11 @@ settingsStorage.onchange = function(evt)
 		}).catch((error) => {
 			console.log(`Failed to queue ClearAllInfo: ${error}`);
 		})
+	} 
+	else if (evt.key === 'ShowCompletedTasks')
+	{
+		console.log(settingsStorage.getItem('ShowCompletedTasks'));
+		SendMessage('ShowCompletedTasks', settingsStorage.getItem('ShowCompletedTasks'));
 	}
 }
 

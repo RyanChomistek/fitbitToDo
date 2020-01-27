@@ -3,13 +3,14 @@ import { me } from "appbit";
 import { dumpObject } from './util';
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { encode, decode } from 'cbor';
-import { TextColorFileName } from '../common/constants'
+import { TextColorFileName, SettingsFileName } from '../common/constants'
 import {EnableStreamingVirtualList, disableStreamingVirtualList} from './StreamingVirtualTable'
+import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 
 export class Screen
 {
     public constructor(
-        public Container:GraphicsElement)
+        public Container: GraphicsElement)
     {}
     
     public Enable(): void
@@ -67,12 +68,23 @@ export class TasksScreen extends Screen
     {
         super.Disable();
         disableStreamingVirtualList();
+        taskDataStreamer.WriteCollectionToCache();
     }
 }
 
+export class TaskFolderScreen extends Screen
+{
+    public Disable(): void
+    {
+        super.Disable();
+        taskFolderDataStreamer.WriteCollectionToCache();
+    }
+}
+
+
 // Setup screens
 export let loadingScreen = new LoadingScreen(document.getElementById("loadingScreen") as GraphicsElement, document.getElementById("spinner") as GraphicsElement);
-export let taskFolderScreen = new Screen(document.getElementById("TaskFolderScreen") as GraphicsElement);
+export let taskFolderScreen = new TaskFolderScreen(document.getElementById("TaskFolderScreen") as GraphicsElement);
 export let tasksScreen = new TasksScreen(document.getElementById("TasksScreen") as GraphicsElement);
 
 let screens = [loadingScreen, taskFolderScreen, tasksScreen];
@@ -91,6 +103,12 @@ function DisableAllScreens()
     {
         screens[i].Disable();
     }
+}
+
+export function ClearStack()
+{
+    DisableAllScreens();
+    ScreenStack = [];
 }
 
 export function PushScreen(screen)
@@ -113,33 +131,6 @@ export function PopScreen()
     else
     {
         me.exit();
-    }
-}
-
-// Handle changing colors
-if(existsSync(TextColorFileName))
-{
-    let previouslySetColor = readFileSync(TextColorFileName, 'json');
-    ChangeColor(previouslySetColor.color)
-}
-
-export function ChangeColor(color)
-{
-    let spinner = document.getElementById("spinner") as GraphicsElement;
-    spinner.style.fill = color;
-
-    SetColorsOverArray(document.getElementsByClassName("tile-divider-bottom"), color);
-    SetColorsOverArray(document.getElementsByClassName("text"), color);
-    SetColorsOverArray(document.getElementsByClassName("checkbox-unselected-color"), color);
-
-    writeFileSync(TextColorFileName, {color:color}, 'json');
-}
-
-function SetColorsOverArray(array, color)
-{
-    for(let i = 0; i < array.length; i++)
-    {
-        array[i].style.fill = color
     }
 }
 

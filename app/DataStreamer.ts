@@ -50,11 +50,9 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
         requestPayload.skip = skip;
         requestPayload.top = this.maxSize;
 
-        if(this.TryGetCollectionFromCache(requestPayload))
-        {
-            // we found a valid chached item go ahead let it load that
-            return;
-        }
+        // try to load cached data, much faster than round tripping the api request
+        // this will have old data however, so we still need to make a web request to get new data
+        this.TryGetCollectionFromCache(requestPayload)
 
         requestPayload.resName = this.getResponseName;
         requestPayload.entityType = this.entityType;
@@ -79,15 +77,23 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
         this.LoadFromObject(rawData);
     }
 
+    public WriteCollectionToCache()
+    {
+        // check if we have a valid id, we can call this function when switching screens and we might not have a valid data streamer at that point
+        if(this.collection && this.collection.id)
+        {
+            writeFileSync(this.GetCacheFileName(this.collection.id, this.collection.skip, this.collection.top), this.collection, 'cbor');
+        }
+    }
+
     public LoadFromObject(rawData: any)
     {
         this.collection = rawData;
 
         // Should probably add a time stamp
 
-        // Save collection to file
-        writeFileSync(this.GetCacheFileName(this.collection.id, this.collection.skip, this.collection.top), this.collection, 'cbor')
-
+        this.WriteCollectionToCache();
+        
         this.startIndex = this.collection.skip;
         this.endIndex = this.collection.skip + this.collection.top;
         console.log(this.startIndex + " " + this.endIndex )

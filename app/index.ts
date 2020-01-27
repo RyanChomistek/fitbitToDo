@@ -3,7 +3,8 @@ import { inbox, outbox } from "file-transfer";
 import { memory } from "system";
 import { readFileSync, unlinkSync, existsSync} from 'fs';
 
-import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen, ChangeColor, GetCurrentScreen} from "./ViewSwitch";
+import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen, GetCurrentScreen, ClearStack} from "./ViewSwitch";
+import { SettingsStorage, GetSettings } from './Settings'
 import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 import { dumpObject } from './util';
 import { SetupTaskList } from './StreamingVirtualTable';
@@ -14,7 +15,11 @@ import { CollectionRquest } from "../common/Collection"
 var waitingForTaskFolderCollectionFileToTransition = true;
 var waitingForTaskCollectionFileToTransition = false;
 
-//
+// Set up settings
+let settings: SettingsStorage = GetSettings();
+settings.ChangeColor(settings.color)
+
+PushScreen(loadingScreen);
 
 //loadingScreen.SetText('Loading Task Folders')
 
@@ -24,6 +29,7 @@ NetworkEventHandler.AddEventHandler('TaskFoldersCollection', (eventName, fileNam
 	if(waitingForTaskFolderCollectionFileToTransition)
 	{
 		waitingForTaskFolderCollectionFileToTransition = false;
+		ClearStack();
 		RenderTaskFolders();
 	}
 });
@@ -54,7 +60,12 @@ NetworkEventHandler.AddEventHandler('TaskCollection', (eventName, fileName) => {
 NetworkEventHandler.AddEventHandler('NormalColorChanged', (eventName, fileName) => {
 	let color = readFileSync(fileName, "cbor");
 	console.log(JSON.parse(color) + " " + JSON.stringify(color));
-	ChangeColor(JSON.parse(color));
+	settings.ChangeColor(JSON.parse(color));
+});
+
+NetworkEventHandler.AddEventHandler('ShowCompletedTasks', (eventName, fileName) => {
+	let showCompletedTasks = readFileSync(fileName, "cbor");
+	settings.ChangeShowCompletedTasks(JSON.parse(showCompletedTasks));
 });
 
 NetworkEventHandler.AddEventHandler('ClearAllInfo', (eventName, fileName) => {

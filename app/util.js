@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 export function dumpObject(obj) {
     let jobject = {name: null, attributes: [], methods: []};
     for(const key in obj) {

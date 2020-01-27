@@ -71,7 +71,16 @@ function ClearAllInformation(props)
 	props.settingsStorage.setItem('ClearAllInfo', 'true');
 }
 
-function mySettings(props) {
+function mySettings(props) 
+{
+	// if this is the first time we boot the app
+	if(!props.settingsStorage.getItem('firstLoginCompleted'))
+	{
+		console.log('first log in')
+		props.settingsStorage.setItem('firstLoginCompleted', JSON.stringify(true));
+		props.settingsStorage.setItem('ShowCompletedTasks', JSON.stringify(true));
+	}
+
 	let hasValidToken = HasValidTokenState(props);
 
 	let microsoftAccountSection;
@@ -110,12 +119,18 @@ function mySettings(props) {
 					]}
 				/>
 			</Section>
+			<Toggle
+				value={true}
+				settingsKey="ShowCompletedTasks"
+				label="show completed tasks"
+			/>
 			<Section description='Use this to clear all information from this companion and any attached devices, will log you out.'>
 				<Button
 					label={`Clear All Local Info`}
 					onClick={ () => {ClearAllInformation(props)}}
 				/>
 			</Section>
+			
 		</Page>
 	);
 }

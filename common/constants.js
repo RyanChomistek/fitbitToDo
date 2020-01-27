@@ -28,5 +28,6 @@ export const StatusMap = {
 export const TaskFolderCollectionId = 1;
 
 // DEVICE ONLY
+export const SettingsFileName = "settings.txt";
 export const TextColorFileName = "TextColor.txt";
 export const DeviceFileNames = [TextColorFileName];
