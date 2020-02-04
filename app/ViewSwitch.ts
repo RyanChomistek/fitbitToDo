@@ -4,7 +4,7 @@ import { dumpObject } from './util';
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { encode, decode } from 'cbor';
 import { TextColorFileName, SettingsFileName } from '../common/constants'
-import {EnableStreamingVirtualList, disableStreamingVirtualList} from './StreamingVirtualTable'
+import { taskSVT } from './VitrualTables/TaskStreamingVirtualTable'
 import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 
 export class Screen
@@ -61,13 +61,13 @@ export class TasksScreen extends Screen
     public Enable(): void
     {
         super.Enable();
-        EnableStreamingVirtualList();
+        taskSVT.Enable();
     }
 
     public Disable(): void
     {
         super.Disable();
-        disableStreamingVirtualList();
+        taskSVT.Disable();
         taskDataStreamer.WriteCollectionToCache();
     }
 }

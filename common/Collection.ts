@@ -3,7 +3,8 @@ import { TaskFolderCollectionId } from "../common/Constants"
 export class CollectionItem 
 {
     constructor(
-        public id: number)
+        public id: number,
+        public changeId: number)
         {
 
         }
@@ -12,21 +13,23 @@ export class CollectionItem
 export class TaskFolderCollectionItem extends CollectionItem
 {
     constructor(
-        public id: number,
-        public name: string)
+        id: number,
+        public name: string,
+        changeId: number)
     {
-        super(id);
+        super(id, changeId);
     }
 }
 
 export class TaskCollectionItem extends CollectionItem
 {
     constructor(
-        public id: number,
-        public status: boolean,
-        public subject: string)
+        id: number,
+        public status: boolean, // true = completed, false = notStarted
+        public subject: string,
+        changeId: number)
     {
-        super(id);
+        super(id, changeId);
     }
 }
 
@@ -37,7 +40,8 @@ export class Collection <Item extends CollectionItem>
     public top: number;
     public count: number;
     public id: number;
-
+    public changeId: number;
+    
     constructor(id: number)
     {
         this.data = []; 

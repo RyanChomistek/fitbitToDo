@@ -3,12 +3,18 @@ import { readFileSync, writeFileSync, existsSync, closeSync } from 'fs';
 
 import { encode, decode } from 'cbor';
 import { RequestTypes, EntityTypes } from '../common/constants'
-import {Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection, CollectionRquest, UpdateCollectionRquest } from '../common/Collection'
+import { Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection, CollectionRquest, UpdateCollectionRquest } from '../common/Collection'
 import { NetworkEventHandler } from './FileIO'
+import { SettingsStorage, GetSettings } from './Settings'
+import { HashString } from '../common/Util'
 
-class DataStreamer <Item extends CollectionItem, DataCollection extends Collection<Item>>
+export class DataStreamer <Item extends CollectionItem, DataCollection extends Collection<Item>>
 {
     public collection: DataCollection;
+    public collectionHash: number = -1;
+
+    private startIndex = 0;
+    private endIndex = 0;
 
     constructor(
         public reqType = -1,
@@ -18,11 +24,35 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
         public updateEntityType = -1,
         public updateRequestName = 'default',
         public updateResponseName = 'default',
-        public maxSize = 25,
-        public startIndex = 0,
-        public endIndex = 0,
+        public maxSize = 10,
+        
         public cacheLoadEventName = 'default')
     {
+    }
+
+    public GetRawStartIndex()
+    {
+        return this.startIndex;
+    }
+
+    public GetRawEndIndex()
+    {
+        return this.endIndex;
+    }
+
+    public GetDisplayStartIndex(): number
+    {
+        return this.startIndex;
+    }
+
+    public GetDisplayEndIndex(): number
+    {
+        return this.startIndex + this.GetDisplayCollectionLength();
+    }
+
+    public GetDisplayCollectionSize()
+    {
+        return this.GetDisplayEndIndex() - this.GetDisplayStartIndex();
     }
 
     public GetCacheFileName(collectionId: number, skip: number, top: number)
@@ -52,7 +82,10 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
 
         // try to load cached data, much faster than round tripping the api request
         // this will have old data however, so we still need to make a web request to get new data
-        this.TryGetCollectionFromCache(requestPayload)
+        if(this.TryGetCollectionFromCache(requestPayload))
+        {
+            return;
+        }
 
         requestPayload.resName = this.getResponseName;
         requestPayload.entityType = this.entityType;
@@ -73,7 +106,7 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
     public LoadFromFileSync(fileName: string): void
     {
         let rawData = readFileSync(fileName, "cbor");
-        console.log(`${Object.keys(rawData)} ${rawData.id} | ${JSON.stringify(rawData)}`);
+        //console.log(`${Object.keys(rawData)} ${rawData.id} | ${JSON.stringify(rawData)}`);
         this.LoadFromObject(rawData);
     }
 
@@ -88,19 +121,26 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
 
     public LoadFromObject(rawData: any)
     {
+        console.log('loading from object ')
         this.collection = rawData;
-
         // Should probably add a time stamp
 
         this.WriteCollectionToCache();
         
         this.startIndex = this.collection.skip;
         this.endIndex = this.collection.skip + this.collection.top;
-        console.log(this.startIndex + " " + this.endIndex )
+        
+        this.collectionHash = HashString(JSON.stringify(this.collection));
+        console.log(`collection hash ${this.collectionHash}`)
     }
 
     public GetFromCollection(index: number): Item
     {
+        if(index >= this.collection.data.length)
+        {
+            return null;
+        }
+
         return this.collection.data[index];
     }
 
@@ -122,6 +162,16 @@ class DataStreamer <Item extends CollectionItem, DataCollection extends Collecti
         }
         
         return 0;
+    }
+
+
+    /**
+     * Gets display collection length
+     * mainly used by the streaming virtual table to react to changes in the datastreamer eg. the user turned of show completed tasks
+     */
+    public GetDisplayCollectionLength(): number
+    {
+        return this.GetLocalCollectionLength();
     }
 
     public UpdateItem(requestPayload: UpdateCollectionRquest): void
@@ -157,6 +207,8 @@ export class TaskFolderDataStreamer
 export class TaskDataStreamer 
     extends DataStreamer<TaskCollectionItem, TasksCollection>  
 {
+    public nonCompletedTaskIndexes: number[] = [];
+
     constructor()
     {
         super();
@@ -170,111 +222,50 @@ export class TaskDataStreamer
 
         this.cacheLoadEventName = 'TaskCollection';
     }
+
+    public FindNonCompletedTaskIndexes()
+    {
+        this.nonCompletedTaskIndexes = [];
+        for(let i = 0; i < this.collection.data.length; i++)
+        {
+            if(!this.collection.data[i].status)
+            {
+                this.nonCompletedTaskIndexes.push(i);
+            }
+        }
+    }
+
+    public GetFromNonCompletedCollection(index: number): TaskCollectionItem
+    {
+        return this.collection.data[this.nonCompletedTaskIndexes[index]];
+    }
+
+    public RemoveFromNonCompletedCollection(index: number)
+    {
+        console.log(`non completed tasks pre ${this.nonCompletedTaskIndexes.length}`)
+        this.nonCompletedTaskIndexes.splice(index, 1);
+        console.log(`non completed tasks post ${this.nonCompletedTaskIndexes.length}`)
+    }
+
+    public GetNonCompletedTasksCollectionLength(): number
+    {
+        return this.nonCompletedTaskIndexes.length;
+    }
+
+    public GetDisplayCollectionLength(): number
+    {
+        let settings: SettingsStorage = GetSettings();
+
+        if(settings.showCompletedTasks)
+		{
+			return this.GetLocalCollectionLength();
+		}
+		else
+		{
+			return  this.GetNonCompletedTasksCollectionLength();
+		}
+    }
 }
 
 export let taskFolderDataStreamer = new TaskFolderDataStreamer();
 export let taskDataStreamer = new TaskDataStreamer();
-
-/*
-export let taskDataStreamer = CreateTasksDataStreamer();
-export let taskFolderDataStreamer = CreateTaskFolderDataStreamer();
-
-function CreateTasksDataStreamer()
-{
-    let tasksDataStreamer = CreateDataStreamer();
-    tasksDataStreamer.entityType = EntityTypes.TasksInFolder;
-    tasksDataStreamer.getRequestName = 'RequestTasksInFolder';
-    tasksDataStreamer.getResponseName = 'TaskCollection';
-
-    tasksDataStreamer.updateEntityType = EntityTypes.Task;
-    tasksDataStreamer.updateRequestName = 'UpdateTask';
-    tasksDataStreamer.updateResponseName = 'UpdatedTask';
-    return tasksDataStreamer;
-}
-
-function CreateTaskFolderDataStreamer()
-{
-    let taskFolderDataStreamer = CreateDataStreamer();
-    taskFolderDataStreamer.getRequestName = 'RequestTaskFolders';
-    taskFolderDataStreamer.getResponseName = 'TaskFoldersCollection';
-    taskFolderDataStreamer.entityType = EntityTypes.TaskFolders;
-    taskFolderDataStreamer.getRequestType =  RequestTypes.GetTaskFolders;
-    return taskFolderDataStreamer;
-}
-
-function CreateDataStreamer()
-{
-    let dataStreamer = {
-        getRequestName: "default",
-        getResponseName: "default",
-        entityType: -1,
-        collection: null,
-        maxSize: 25,
-        startIndex: 0,
-        endIndex:0,
-        RequestNewCollection: (requestPayload, skip = 0) =>{
-            requestPayload.s = skip;
-            requestPayload.t = dataStreamer.maxSize;
-
-            requestPayload.resName = dataStreamer.getResponseName;
-            requestPayload.entityType = dataStreamer.entityType;
-
-            requestPayload.reqType = RequestTypes.Get;
-
-            console.log(dataStreamer.getRequestName +"|"+ JSON.stringify(requestPayload) + "|" + JSON.stringify(requestPayload).length)
-            console.log(JSON.stringify(requestPayload))
-
-            outbox.enqueue(dataStreamer.getRequestName, encode(JSON.stringify(requestPayload))).then((ft) => {
-                console.log(`Transfer of ${ft.name} successfully queued.`);
-              })
-              .catch((error) => {
-                console.log(`Failed to queue ${filename}: ${error}`);
-              })
-        },
-        LoadFromFileSync: (fileName) => {
-            dataStreamer.collection = readFileSync(fileName, "cbor");
-            console.log(JSON.stringify(dataStreamer.collection));
-            dataStreamer.startIndex = dataStreamer.collection.s;
-            dataStreamer.endIndex = dataStreamer.collection.s + dataStreamer.collection.t;
-            console.log(dataStreamer.startIndex + " " + dataStreamer.endIndex )
-        },
-        GetFromCollection: (index) => {
-            return dataStreamer.collection.data[index];
-        },
-        GetCollectionLength: () => {
-            if(dataStreamer.collection)
-            {
-                return dataStreamer.collection.count;
-            }
-            
-            return 0;
-        },
-        GetLocalCollectionLength: () => {
-            if(dataStreamer.collection)
-            {
-                return dataStreamer.collection.data.length;
-            }
-            
-            return 0;
-        },
-        // The payload needs to contain the id and what changed
-        UpdateItem: (requestPayload) => {
-            console.log(JSON.stringify(requestPayload));
-            requestPayload.reqType = RequestTypes.Update;
-            requestPayload.resName = dataStreamer.updateResponseName;
-            requestPayload.entityType = dataStreamer.updateEntityType;
-
-            outbox.enqueue(dataStreamer.updateRequestName, encode(JSON.stringify(requestPayload))).then((ft) => {
-                console.log(`Transfer of ${ft.name} successfully queued.`);
-              })
-              .catch((error) => {
-                console.log(`Failed to queue ${filename}: ${error}`);
-              })
-        }
-    };
-
-    return dataStreamer;
-}
-
-
-*/

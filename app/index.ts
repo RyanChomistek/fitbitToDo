@@ -7,10 +7,11 @@ import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen, Ge
 import { SettingsStorage, GetSettings } from './Settings'
 import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 import { dumpObject } from './util';
-import { SetupTaskList } from './StreamingVirtualTable';
+import {  } from './VitrualTables/StreamingVirtualTable';
 import { DeviceFileNames, TaskFolderCollectionId } from '../common/constants'
 import { NetworkEventHandler } from './FileIO'
 import { CollectionRquest } from "../common/Collection"
+import { taskSVT } from './VitrualTables/TaskStreamingVirtualTable';
 
 var waitingForTaskFolderCollectionFileToTransition = true;
 var waitingForTaskCollectionFileToTransition = false;
@@ -36,24 +37,20 @@ NetworkEventHandler.AddEventHandler('TaskFoldersCollection', (eventName, fileNam
 
 NetworkEventHandler.AddEventHandler('TaskCollection', (eventName, fileName) => {
 	console.log(`event ${eventName} ${fileName}`)
+
+	let oldCollectionHash = taskDataStreamer.collectionHash;
+
 	taskDataStreamer.LoadFromFileSync(fileName);
+	console.log(JSON.stringify(taskDataStreamer.collection.data));
 	if(waitingForTaskCollectionFileToTransition)
 	{
 		waitingForTaskCollectionFileToTransition = false;
 		renderTaskScreen();
 	}
-	else if(GetCurrentScreen() == tasksScreen)
+	else if(GetCurrentScreen() == tasksScreen && taskDataStreamer.collectionHash != oldCollectionHash)
 	{
-		// already rendering task view
-		let VTList = document.getElementById("checkbox-list") as VirtualTileList<{
-			type: string;
-			value: string;
-			index: number;
-		}>;
-		
-		SetupTaskList()
-		VTList.value = 0;
-		VTList.redraw();
+		// already rendering task view, but we got new info so we should rerender
+		taskSVT.RebuildList();
 	}
 });
 
@@ -66,6 +63,10 @@ NetworkEventHandler.AddEventHandler('NormalColorChanged', (eventName, fileName) 
 NetworkEventHandler.AddEventHandler('ShowCompletedTasks', (eventName, fileName) => {
 	let showCompletedTasks = readFileSync(fileName, "cbor");
 	settings.ChangeShowCompletedTasks(JSON.parse(showCompletedTasks));
+	if(GetCurrentScreen() == tasksScreen)
+	{
+		taskSVT.RebuildList();
+	}
 });
 
 NetworkEventHandler.AddEventHandler('ClearAllInfo', (eventName, fileName) => {
@@ -100,7 +101,7 @@ function RenderTaskFolders()
 		index: number;
 	}>;
 
-	// hack to se the length
+	// hack to set the length
 	(<any> VTList).length = taskFolderDataStreamer.GetLocalCollectionLength();
 }
 
@@ -109,15 +110,13 @@ function renderTaskScreen()
 	// pop the loading screen
 	PopScreen();
 	PushScreen(tasksScreen);
-	let VTList = document.getElementById("checkbox-list");
-
-	//console.log("++++$$$$$$$$$$$$$$$$$$$" + JSON.stringify(taskDataStreamer.GetCollectionLength()))
-	(<any> VTList).length = taskDataStreamer.GetLocalCollectionLength();
+	console.log("!@#!@#!@#!@#!@#!@#!@#!@#!@#")
+	taskSVT.RebuildList();
 }
 
 // setup the list ui's
 SetUpTaskFolderList();
-SetupTaskList();
+//SetupTaskList();
 
 function SetUpTaskFolderList()
 {
@@ -129,19 +128,20 @@ function SetUpTaskFolderList()
 	
 	VTList.delegate = {
 		getTileInfo: function(index) {
+
 		  return {
 			type: "my-pool",
-			value: taskFolderDataStreamer.GetFromCollection(index).name,
+			value: taskFolderDataStreamer.GetFromCollection(index)?.name,
 			index: index
 		  };
 		},
 		configureTile: function(tile, info) {
 		  if (info.type == "my-pool") {
-			tile.getElementById("text").text = `${info.value}`;
+			tile.getElementById("text").text = `${info?.value}`;
 			let touch = tile.getElementById("touch-me");
 			touch.onclick = evt => {
 				waitingForTaskCollectionFileToTransition = true;
-				loadingScreen.SetText(`Loading: ${info.value}`)
+				loadingScreen.SetText(`Loading: ${info?.value}`)
 				PushScreen(loadingScreen);
 
 				// get id
@@ -152,20 +152,20 @@ function SetUpTaskFolderList()
 		  }
 		}
 	};
-	
-	VTList.length = taskFolderDataStreamer.GetCollectionLength();
+
+	VTList.length = taskFolderDataStreamer.GetLocalCollectionLength();
 }
 
 let btnBottom = document.getElementById("LoadMoreBottom");
 btnBottom.onactivate = function(evt) {
 	var id = taskDataStreamer.collection.id;
 	console.log(id)
-	taskDataStreamer.RequestNewCollection(new CollectionRquest(id), taskDataStreamer.endIndex)
+	taskDataStreamer.RequestNewCollection(new CollectionRquest(id), taskDataStreamer.GetRawEndIndex())
 }
 
 let btnTop = document.getElementById("LoadMoreTop");
 btnTop.onactivate = function(evt) {
 	var id = taskDataStreamer.collection.id;
 	console.log(id);
-	taskDataStreamer.RequestNewCollection(new CollectionRquest(id), taskDataStreamer.startIndex - taskDataStreamer.maxSize);
+	taskDataStreamer.RequestNewCollection(new CollectionRquest(id), taskDataStreamer.GetRawStartIndex() - taskDataStreamer.maxSize);
 }

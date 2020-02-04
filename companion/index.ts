@@ -139,8 +139,8 @@ async function HandleApiGetRequests<Item, CompressedItem extends CollectionItem>
 	compressedCollection.skip = apiRequest.skip;
 	compressedCollection.top = apiRequest.top;
 
-	console.log(`collection : ${JSON.stringify(compressedCollection)}`)
-	console.log(`response size ${MemSizeAprox(compressedCollection)}`)
+	//console.log(`collection : ${JSON.stringify(compressedCollection)}`)
+	//console.log(`response size ${MemSizeAprox(compressedCollection)}`)
 	
 	//console.log(apiRequest + " " + apiRequest['resName'] + " " + compressedCollection.count  )
 

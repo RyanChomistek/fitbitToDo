@@ -2,8 +2,8 @@ import { settingsStorage } from "settings";
 import { localStorage } from "local-storage";
 
 import { GetToken, EnsureTokenState } from "../companion/Authentication.js";
-import {Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection} from '../common/Collection'
-
+import { Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection} from '../common/Collection'
+import { HashString } from '../common/Util'
 export class ApiCollection<Item, CompressedItem extends CollectionItem>
 {
     endpointName: string;
@@ -51,6 +51,7 @@ export interface ApiTaskFolderCollectionItem
     name: string;
     isDefaultFolder: boolean;
     parentGroupKey: string;
+    changeKey: string;
 }
 
 function GetIdHashMap()
@@ -63,19 +64,6 @@ function GetIdHashMap()
     }
 
     return idHashMap;
-}
-
-function HashString(string): number {
-    let hash = 0;
-    if (string.length == 0) {
-        return hash;
-    }
-    for (var i = 0; i < string.length; i++) {
-        var char = string.charCodeAt(i);
-        hash = ((hash<<5)-hash)+char;
-        hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash;
 }
 
 export class TaskFolderApiCollection extends ApiCollection<ApiTaskFolderCollectionItem, TaskFolderCollectionItem>
@@ -94,7 +82,7 @@ export class TaskFolderApiCollection extends ApiCollection<ApiTaskFolderCollecti
         {
             let item = this.data[i];
             let hashedId = HashString(item.id);
-            compressedCollection.data.push(new TaskFolderCollectionItem(hashedId, item.name));
+            compressedCollection.data.push(new TaskFolderCollectionItem(hashedId, item.name, HashString(item.changeKey)));
         }
 
         return compressedCollection;
@@ -105,7 +93,8 @@ export interface ApiTaskCollectionItem
 {
     id: number;
     status: string;
-    subject: string
+    subject: string;
+    changeKey: string;
 }
 
 export class TasksInFolderApiCollection extends ApiCollection<ApiTaskCollectionItem, TaskCollectionItem>
@@ -120,7 +109,6 @@ export class TasksInFolderApiCollection extends ApiCollection<ApiTaskCollectionI
 
     CompressCollection()
     {
-        console.log('TasksInFolderApiCollection')
         let hashedFolderId = HashString(this.id);
         let compressedCollection = new TasksCollection(hashedFolderId);
 
@@ -129,10 +117,10 @@ export class TasksInFolderApiCollection extends ApiCollection<ApiTaskCollectionI
             let item: ApiTaskCollectionItem = this.data[i];
             let hashedId = HashString(item.id);
             let statusBool = item.status == "completed";
-            compressedCollection.data.push(new TaskCollectionItem(hashedId, statusBool, item.subject));
+            compressedCollection.data.push(new TaskCollectionItem(hashedId, statusBool, item.subject, HashString(item.changeKey)));
         }
 
-        console.log(`compress collection ${this.id} ${compressedCollection.id}`)
+        //console.log(`compress collection ${this.id} ${compressedCollection.id}`)
 
         return compressedCollection;
     }
@@ -186,7 +174,7 @@ Gets "top" number of entities starting after the "skip" index
 */
 async function Get<Item, CompressedItem extends CollectionItem>(collection: ApiCollection<Item, CompressedItem>, skip = 0, top = 10)
 {
-    console.log(skip + " | " + top);
+    //console.log(skip + " | " + top);
     return await GetFromApi(collection, skip, top)
 }
 
@@ -231,13 +219,13 @@ async function GetFromApi<Item, CompressedItem extends CollectionItem>(collectio
         collection.endpointName + 
         "?$skip=" + skip +
         "&$top=" + top;
-    console.log(skip + " " + top);
+    //console.log(skip + " " + top);
 
-    console.log(endpointUrl + " " + JSON.stringify(getRequest))
+    //console.log(endpointUrl + " " + JSON.stringify(getRequest))
     return await fetch(endpointUrl, getRequest).then(function(data){
 		return data.json();
 	}).then(function(data){
-        //console.log('data len : ' + JSON.stringify(data))
+        //console.log('data : ' + JSON.stringify(data))
         //collection.nextUrl = data['@odata.nextLink'];
 
         collection.hasUnsyncedData = data['value'].length > 0;
@@ -277,10 +265,11 @@ async function GetCountFromApi(collection)
     var endpointUrl = 'https://graph.microsoft.com/beta/me/outlook/' + 
         collection.endpointName + "/$count";
     
+    console.log(endpointUrl)
+
     return await fetch(endpointUrl, getRequest).then(function(data){
             return data.json();
         }).then(function(data){
-            //console.log(data)
             return data;
         });
 }
