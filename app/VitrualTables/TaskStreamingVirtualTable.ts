@@ -30,7 +30,7 @@ export class TaskStreamingVirtualTable extends StreamingVirtualTable <TaskCollec
 
     protected ConfigureTile(tile: VirtualTileListItem, info: TileElement, settings: SettingsStorage)
 	{
-        console.log(`config task ${info.index} ${taskDataStreamer.nonCompletedTaskIndexes[info.index]} ${tile.id}`);
+        //console.log(`config task ${info.index} ${taskDataStreamer.nonCompletedTaskIndexes[info.index]} ${tile.id}`);
         this.uiTiles[tile.id] = { index: info.index, tile:tile};
 
         let item = taskDataStreamer.GetFromCollection(info.index);
@@ -66,10 +66,10 @@ export class TaskStreamingVirtualTable extends StreamingVirtualTable <TaskCollec
             let id = task.id;
             task.status = !task.status;
 
-            // taskDataStreamer.UpdateItem(new UpdateCollectionRquest(
-            //     {status: StatusMap[task.status]},
-            //     id
-            // ));
+            taskDataStreamer.UpdateItem(new UpdateCollectionRquest(
+                {status: StatusMap[task.status]},
+                id
+            ));
             
             if(!settings.showCompletedTasks)
             {
@@ -85,7 +85,7 @@ export class TaskStreamingVirtualTable extends StreamingVirtualTable <TaskCollec
 
         for(let uiTile in tiles)
         {
-            console.log((tiles[uiTile].id));
+            //console.log((tiles[uiTile].id));
             tiles[uiTile].getElementById("text").text = `x-x-x`;
         }
     }
@@ -95,7 +95,7 @@ export class TaskStreamingVirtualTable extends StreamingVirtualTable <TaskCollec
         this.InitUiTiles();
 
         this.uiTiles = {};
-        console.log(`begin rebuild task list ${JSON.stringify(this.uiTiles)}`)
+        //console.log(`begin rebuild task list ${JSON.stringify(this.uiTiles)}`)
         taskDataStreamer.FindNonCompletedTaskIndexes();
         for (var key in this.uiTiles)
         {
@@ -103,11 +103,6 @@ export class TaskStreamingVirtualTable extends StreamingVirtualTable <TaskCollec
         }
         
         super.RebuildList();
-
-        for(var tile in this.uiTiles)
-        {
-            console.log(`end rebuild task list ${JSON.stringify(this.uiTiles[tile])}`)
-        }
     };
 
 	/**
@@ -119,48 +114,21 @@ export class TaskStreamingVirtualTable extends StreamingVirtualTable <TaskCollec
         // reinitialize all of the visible tiles so that they reflect the changes
         // have to do this in a different callstack or else we race condition with whatever is getting done on the table
         setTimeout(() => {
-            (<TaskDataStreamer> this.dataStreamer).RemoveFromNonCompletedCollection(info.index);
-            this.RefreshTiles();
+            this.RefreshList();
         }, 100);
     }
-    
-    public RefreshTiles()
+
+    /**
+     * Releads the tiles, and attempts to preserve the view location of the user
+     */
+    public RefreshList()
     {
-        // TODO GET RID OF THE VIRTUAL TILE LIST AND REPLACE WITH NORMAL TILE LIST
-        this.InitUiTiles();
-
-        // sort the ui elements in order of what the user sees
-        let uiSortedTiles = []
-
-        for (var key in this.uiTiles)
-        {
-            uiSortedTiles.push(this.uiTiles[key])
-            uiSortedTiles[uiSortedTiles.length - 1].tile.style.display = 'inline';
-        }
-
-        uiSortedTiles.sort((a,b) => {return a.index-b.index});
-
-        let settings: SettingsStorage = GetSettings();
-        for(let i = 0; i < uiSortedTiles.length - 1; i++)
-        {
-            let newInfo: TileElement = {type: "", index:i}
-
-            // This tile has been removed so hide it
-            console.log(`${uiSortedTiles[i].index} ${taskDataStreamer.GetNonCompletedTasksCollectionLength()}`);
-            if(taskDataStreamer.GetNonCompletedTasksCollectionLength() < uiSortedTiles[i].index)
-             {
-            //     //uiSortedTiles[uiSortedTiles.length - 1].tile.style.display = 'none';
-            //     console.log((uiSortedTiles[i].tile.id));
-                uiSortedTiles[i].tile.getElementById("text").text = `x-x-x`;
-                continue;
-            }
-
-            this.ConfigureTile(uiSortedTiles[i].tile, newInfo, settings);
-        }
-
-        // set the last item to hidden, might need to be more aggressive
-        //uiSortedTiles[uiSortedTiles.length - 1].tile.style.display = 'none';
-        //uiSortedTiles[uiSortedTiles.length - 1].tile.getElementById("text").text = `x-x-x`;
+        let viewLocation = this.VTList.value;
+        //console.log(`VIEW LOCATION START ${this.VTList.value}`)
+        this.RebuildList();
+        //console.log(`VIEW LOCATION END ${this.VTList.value}`)
+        this.VTList.value = viewLocation;
+        this.VTList.redraw();
     }
 };
 

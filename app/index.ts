@@ -65,7 +65,7 @@ NetworkEventHandler.AddEventHandler('ShowCompletedTasks', (eventName, fileName) 
 	settings.ChangeShowCompletedTasks(JSON.parse(showCompletedTasks));
 	if(GetCurrentScreen() == tasksScreen)
 	{
-		taskSVT.RebuildList();
+		taskSVT.RefreshList();
 	}
 });
 
