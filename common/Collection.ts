@@ -65,7 +65,7 @@ export class TasksCollection extends Collection<TaskCollectionItem>
     }
 }
 
-export class CollectionRquest 
+export class CollectionRequest 
 {
     public skip: number; // skip
     public top: number; // top
@@ -80,7 +80,7 @@ export class CollectionRquest
     }
 }
 
-export class UpdateCollectionRquest extends CollectionRquest
+export class UpdateCollectionRquest extends CollectionRequest
 {
     constructor( 
         public itemUpdated: any,

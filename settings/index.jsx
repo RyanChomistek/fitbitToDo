@@ -124,7 +124,7 @@ function mySettings(props)
 				settingsKey="ShowCompletedTasks"
 				label="show completed tasks"
 			/>
-			<Section description='Use this to clear all information from this companion and any attached devices, will log you out.'>
+			<Section description='Use this to clear all information from this companion and any attached devices, this will log you out.'>
 				<Button
 					label={`Clear All Local Info`}
 					onClick={ () => {ClearAllInformation(props)}}

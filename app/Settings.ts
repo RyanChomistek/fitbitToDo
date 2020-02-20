@@ -7,7 +7,8 @@ export class SettingsStorage
 {
     public constructor(
         public color: string,
-        public showCompletedTasks: boolean)
+        public showCompletedTasks: boolean,
+        public hasLoggedInBefore: boolean)
     {}
 
     public WriteToFile()
@@ -33,7 +34,15 @@ export class SettingsStorage
         this.showCompletedTasks = showCompletedTasks;
         this.WriteToFile();
     }
+
+    public ChangeHasLoggedIn(hasLoggedIn: boolean)
+    {
+        this.hasLoggedInBefore = hasLoggedIn;
+        this.WriteToFile();
+    }
 }
+
+let settings: SettingsStorage = undefined;
 
 /**
  * Gets settings
@@ -41,13 +50,18 @@ export class SettingsStorage
  */
 export function GetSettings(): SettingsStorage
 {
+    if(settings != undefined)
+    {
+        return settings;
+    }
+
     if(existsSync(SettingsFileName))
     {
         let rawData = readFileSync(SettingsFileName, 'json');
-        return new SettingsStorage(rawData.color, rawData.showCompletedTasks);
+        return new SettingsStorage(rawData.color, rawData.showCompletedTasks, rawData.hasLoggedInBefore);
     }
 
-    return new SettingsStorage('white', true);
+    return new SettingsStorage('white', true, false);
 }
 
 function SetColorsOverArray(array, color)

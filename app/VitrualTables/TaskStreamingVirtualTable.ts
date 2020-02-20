@@ -5,22 +5,14 @@ import { taskDataStreamer, TaskDataStreamer, DataStreamer } from "../DataStreame
 import { SettingsStorage, GetSettings } from '../Settings'
 import { UpdateCollectionRquest, TaskCollectionItem, TasksCollection } from '../../common/Collection'
 import { StatusMap } from "../../common/constants";
-import { dumpObject } from '../util'
-
-class HideOptions
-{
-    alignment: TileListItemAlignment = 'middle';
-	animate: boolean = true;
-	redraw: boolean = true;
-}
 
 export class TaskStreamingVirtualTable extends StreamingVirtualTable <TaskCollectionItem, TasksCollection>
 {
     private uiTiles = {};
 
     public constructor(
-		public loadTop: GraphicsElement,
-		public loadBottom: GraphicsElement,
+		public loadTop: ComboButton,
+		public loadBottom: ComboButton,
 		public VTList: VirtualTileList<TileElement>,
 		public poolId: string,
 		public dataStreamer: DataStreamer<TaskCollectionItem, TasksCollection>)
@@ -117,24 +109,11 @@ export class TaskStreamingVirtualTable extends StreamingVirtualTable <TaskCollec
             this.RefreshList();
         }, 100);
     }
-
-    /**
-     * Releads the tiles, and attempts to preserve the view location of the user
-     */
-    public RefreshList()
-    {
-        let viewLocation = this.VTList.value;
-        //console.log(`VIEW LOCATION START ${this.VTList.value}`)
-        this.RebuildList();
-        //console.log(`VIEW LOCATION END ${this.VTList.value}`)
-        this.VTList.value = viewLocation;
-        this.VTList.redraw();
-    }
 };
 
 export let taskSVT = new TaskStreamingVirtualTable(
-	document.getElementById("LoadMoreTop") as GraphicsElement,
-	document.getElementById("LoadMoreBottom") as GraphicsElement,
+	document.getElementById("LoadMoreTop") as ComboButton,
+	document.getElementById("LoadMoreBottom") as ComboButton,
 	document.getElementById("checkbox-list") as VirtualTileList<{type: string;index: number;}>,
     "checkbox-pool",
     taskDataStreamer);

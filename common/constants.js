@@ -24,6 +24,8 @@ export const StatusMap = {
     true: "Completed"
 }
 
+export const CollectionRequestSize = 25;
+
 // Named Collection Ids
 export const TaskFolderCollectionId = 1;
 

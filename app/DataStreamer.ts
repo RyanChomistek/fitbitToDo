@@ -2,8 +2,8 @@ import { outbox } from "file-transfer";
 import { readFileSync, writeFileSync, existsSync, closeSync } from 'fs';
 
 import { encode, decode } from 'cbor';
-import { RequestTypes, EntityTypes } from '../common/constants'
-import { Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection, CollectionRquest, UpdateCollectionRquest } from '../common/Collection'
+import { RequestTypes, EntityTypes, CollectionRequestSize } from '../common/constants'
+import { Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection, CollectionRequest, UpdateCollectionRquest } from '../common/Collection'
 import { NetworkEventHandler } from './FileIO'
 import { SettingsStorage, GetSettings } from './Settings'
 import { HashString } from '../common/Util'
@@ -24,7 +24,7 @@ export class DataStreamer <Item extends CollectionItem, DataCollection extends C
         public updateEntityType = -1,
         public updateRequestName = 'default',
         public updateResponseName = 'default',
-        public maxSize = 10,
+        public maxSize = CollectionRequestSize,
         
         public cacheLoadEventName = 'default')
     {
@@ -60,7 +60,7 @@ export class DataStreamer <Item extends CollectionItem, DataCollection extends C
         return `dataCache_${collectionId}_${skip}_${top}.bin`;
     }
 
-    public TryGetCollectionFromCache(requestPayload: CollectionRquest)
+    public TryGetCollectionFromCache(requestPayload: CollectionRequest)
     {
         let cacheFileName = this.GetCacheFileName(requestPayload.id, requestPayload.skip, requestPayload.top);
         if(!existsSync(cacheFileName))
@@ -75,7 +75,7 @@ export class DataStreamer <Item extends CollectionItem, DataCollection extends C
         return true;
     }
 
-    public RequestNewCollection(requestPayload: CollectionRquest, skip = 0)
+    public RequestNewCollection(requestPayload: CollectionRequest, skip = 0)
     {
         requestPayload.skip = skip;
         requestPayload.top = this.maxSize;
@@ -84,7 +84,7 @@ export class DataStreamer <Item extends CollectionItem, DataCollection extends C
         // this will have old data however, so we still need to make a web request to get new data
         if(this.TryGetCollectionFromCache(requestPayload))
         {
-            return;
+            //return;
         }
 
         requestPayload.resName = this.getResponseName;
@@ -106,7 +106,7 @@ export class DataStreamer <Item extends CollectionItem, DataCollection extends C
     public LoadFromFileSync(fileName: string): void
     {
         let rawData = readFileSync(fileName, "cbor");
-        //console.log(`${Object.keys(rawData)} ${rawData.id} | ${JSON.stringify(rawData)}`);
+        console.log(`${Object.keys(rawData)} ${rawData.id} | ${JSON.stringify(rawData)}`);
         this.LoadFromObject(rawData);
     }
 

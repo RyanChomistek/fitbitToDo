@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 import { encode, decode } from 'cbor';
 import { TextColorFileName, SettingsFileName } from '../common/constants'
 import { taskSVT } from './VitrualTables/TaskStreamingVirtualTable'
+import { taskFoldersSVT } from './VitrualTables/TaskFoldersStreamingVirtualTable'
 import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 
 export class Screen
@@ -26,6 +27,8 @@ export class Screen
 
 export class LoadingScreen extends Screen
 {
+    private waitingFor: Screen = undefined;
+
     public constructor(
         public Container:GraphicsElement,
         public Spinner:GraphicsElement)
@@ -33,6 +36,16 @@ export class LoadingScreen extends Screen
         super(Container);
     }
     
+    public SetWaitingFor(waitingFor: Screen)
+    {
+        this.waitingFor = waitingFor;
+    }
+
+    public GetWaitingFor(): Screen
+    {
+        return this.waitingFor;
+    }
+
     public Enable(): void
     {
         super.Enable();
@@ -74,9 +87,16 @@ export class TasksScreen extends Screen
 
 export class TaskFolderScreen extends Screen
 {
+    public Enable(): void
+    {
+        super.Enable();
+        taskFoldersSVT.Enable();
+    }
+
     public Disable(): void
     {
         super.Disable();
+        taskFoldersSVT.Disable();
         taskFolderDataStreamer.WriteCollectionToCache();
     }
 }

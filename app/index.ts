@@ -1,37 +1,42 @@
 import document from "document";
 import { inbox, outbox } from "file-transfer";
 import { memory } from "system";
-import { readFileSync, unlinkSync, existsSync} from 'fs';
+import { readFileSync, unlinkSync, existsSync, listDirSync } from 'fs';
 
 import { loadingScreen, taskFolderScreen, tasksScreen, PushScreen, PopScreen, GetCurrentScreen, ClearStack} from "./ViewSwitch";
 import { SettingsStorage, GetSettings } from './Settings'
 import { taskFolderDataStreamer, taskDataStreamer } from "./DataStreamer";
 import { dumpObject } from './util';
-import {  } from './VitrualTables/StreamingVirtualTable';
 import { DeviceFileNames, TaskFolderCollectionId } from '../common/constants'
 import { NetworkEventHandler } from './FileIO'
-import { CollectionRquest } from "../common/Collection"
+import { CollectionRequest } from "../common/Collection"
 import { taskSVT } from './VitrualTables/TaskStreamingVirtualTable';
-
-var waitingForTaskFolderCollectionFileToTransition = true;
-var waitingForTaskCollectionFileToTransition = false;
+import { taskFoldersSVT } from './VitrualTables/TaskFoldersStreamingVirtualTable';
 
 // Set up settings
-let settings: SettingsStorage = GetSettings();
-settings.ChangeColor(settings.color)
+
+GetSettings().ChangeColor(GetSettings().color)
 
 PushScreen(loadingScreen);
-
-//loadingScreen.SetText('Loading Task Folders')
+loadingScreen.SetWaitingFor(taskFolderScreen);
 
 NetworkEventHandler.AddEventHandler('TaskFoldersCollection', (eventName, fileName) => {
 	console.log(`event ${eventName} ${fileName}`)
+	GetSettings().ChangeHasLoggedIn(true);
+	let oldCollectionHash = taskFolderDataStreamer.collectionHash;
+
 	taskFolderDataStreamer.LoadFromFileSync(fileName);
-	if(waitingForTaskFolderCollectionFileToTransition)
+
+	if(GetCurrentScreen() == loadingScreen && loadingScreen.GetWaitingFor() == taskFolderScreen)
 	{
-		waitingForTaskFolderCollectionFileToTransition = false;
+		loadingScreen.SetWaitingFor(undefined);
 		ClearStack();
-		RenderTaskFolders();
+		PushScreen(taskFolderScreen);
+		taskFoldersSVT.RebuildList();
+	}
+	else if(GetCurrentScreen() == taskFolderScreen && taskFolderDataStreamer.collectionHash != oldCollectionHash)
+	{
+		taskFoldersSVT.RefreshList();
 	}
 });
 
@@ -42,10 +47,13 @@ NetworkEventHandler.AddEventHandler('TaskCollection', (eventName, fileName) => {
 
 	taskDataStreamer.LoadFromFileSync(fileName);
 	console.log(JSON.stringify(taskDataStreamer.collection.data));
-	if(waitingForTaskCollectionFileToTransition)
+	if(GetCurrentScreen() == loadingScreen && loadingScreen.GetWaitingFor() == tasksScreen)
 	{
-		waitingForTaskCollectionFileToTransition = false;
-		renderTaskScreen();
+		loadingScreen.SetWaitingFor(undefined);
+		// pop the loading screen
+		PopScreen();
+		PushScreen(tasksScreen);
+		taskSVT.RebuildList();
 	}
 	else if(GetCurrentScreen() == tasksScreen && taskDataStreamer.collectionHash != oldCollectionHash)
 	{
@@ -57,12 +65,12 @@ NetworkEventHandler.AddEventHandler('TaskCollection', (eventName, fileName) => {
 NetworkEventHandler.AddEventHandler('NormalColorChanged', (eventName, fileName) => {
 	let color = readFileSync(fileName, "cbor");
 	console.log(JSON.parse(color) + " " + JSON.stringify(color));
-	settings.ChangeColor(JSON.parse(color));
+	GetSettings().ChangeColor(JSON.parse(color));
 });
 
 NetworkEventHandler.AddEventHandler('ShowCompletedTasks', (eventName, fileName) => {
 	let showCompletedTasks = readFileSync(fileName, "cbor");
-	settings.ChangeShowCompletedTasks(JSON.parse(showCompletedTasks));
+	GetSettings().ChangeShowCompletedTasks(JSON.parse(showCompletedTasks));
 	if(GetCurrentScreen() == tasksScreen)
 	{
 		taskSVT.RefreshList();
@@ -77,95 +85,39 @@ NetworkEventHandler.AddEventHandler('ClearAllInfo', (eventName, fileName) => {
 			unlinkSync(DeviceFileNames[i]);
 		}
 	}
+
+	// clear all cached data
+	const listDir = listDirSync('/private/data');
+	var dirIter;
+	while ((dirIter = listDir.next()) && !dirIter.done) {
+		if(dirIter.value.indexOf('dataCache_') != -1)
+		{
+			unlinkSync(dirIter.value);
+		}
+	}
+});
+
+// Tells the user that they are haivng account problems and need to check their phone
+NetworkEventHandler.AddEventHandler('LoggedOut', (eventName, fileName) => {
+	// They havent logged in so dont bother showing a new loading screen
+	if(!GetSettings().hasLoggedInBefore)
+	{
+		return;
+	}
+
+	GetSettings().ChangeHasLoggedIn(false);
+	ClearStack();
+	loadingScreen.SetText("problem accessing Microsoft data. You may need to re-login in the fit bit app.");
+	PushScreen(loadingScreen);
 });
 
 document.onkeypress = function(e) {
 	//console.log("Key pressed: " + e.key);
 	e.preventDefault();
 	if (e.key==="back") {
-		// these will assume the loading screen is up, if we back out and dont reset these wewill exit the app when the new info comes in
-		waitingForTaskFolderCollectionFileToTransition = false;
-		waitingForTaskCollectionFileToTransition = false;
-
 		PopScreen();
 	}
 }
 
-taskFolderDataStreamer.RequestNewCollection(new CollectionRquest(TaskFolderCollectionId));
-
-function RenderTaskFolders()
-{
-	PushScreen(taskFolderScreen);
-	let VTList = document.getElementById("my-list") as VirtualTileList<{
-		type: string;
-		index: number;
-	}>;
-
-	// hack to set the length
-	(<any> VTList).length = taskFolderDataStreamer.GetLocalCollectionLength();
-}
-
-function renderTaskScreen()
-{
-	// pop the loading screen
-	PopScreen();
-	PushScreen(tasksScreen);
-	console.log("!@#!@#!@#!@#!@#!@#!@#!@#!@#")
-	taskSVT.RebuildList();
-}
-
-// setup the list ui's
-SetUpTaskFolderList();
-//SetupTaskList();
-
-function SetUpTaskFolderList()
-{
-	let VTList = document.getElementById("my-list") as VirtualTileList<{
-		type: string;
-		value: string;
-		index: number;
-	}>;
-	
-	VTList.delegate = {
-		getTileInfo: function(index) {
-
-		  return {
-			type: "my-pool",
-			value: taskFolderDataStreamer.GetFromCollection(index)?.name,
-			index: index
-		  };
-		},
-		configureTile: function(tile, info) {
-		  if (info.type == "my-pool") {
-			tile.getElementById("text").text = `${info?.value}`;
-			let touch = tile.getElementById("touch-me");
-			touch.onclick = evt => {
-				waitingForTaskCollectionFileToTransition = true;
-				loadingScreen.SetText(`Loading: ${info?.value}`)
-				PushScreen(loadingScreen);
-
-				// get id
-				var id = taskFolderDataStreamer.GetFromCollection(info.index).id;
-				// send message back to the host with id
-				taskDataStreamer.RequestNewCollection(new CollectionRquest(id));
-			};
-		  }
-		}
-	};
-
-	VTList.length = taskFolderDataStreamer.GetLocalCollectionLength();
-}
-
-let btnBottom = document.getElementById("LoadMoreBottom");
-btnBottom.onactivate = function(evt) {
-	var id = taskDataStreamer.collection.id;
-	console.log(id)
-	taskDataStreamer.RequestNewCollection(new CollectionRquest(id), taskDataStreamer.GetRawEndIndex())
-}
-
-let btnTop = document.getElementById("LoadMoreTop");
-btnTop.onactivate = function(evt) {
-	var id = taskDataStreamer.collection.id;
-	console.log(id);
-	taskDataStreamer.RequestNewCollection(new CollectionRquest(id), taskDataStreamer.GetRawStartIndex() - taskDataStreamer.maxSize);
-}
+// start off the process by asking for a new collection
+taskFolderDataStreamer.RequestNewCollection(new CollectionRequest(TaskFolderCollectionId));

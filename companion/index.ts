@@ -6,9 +6,9 @@ import { encode } from 'cbor';
 
 import { EnsureTokenState } from './Authentication'
 import { Login, User, ApiCollection } from "../companion/TaskApi";
-import { RequestTypes, EntityTypes } from '../common/constants'
+import { RequestTypes, EntityTypes, CollectionRequestSize } from '../common/constants'
 import { MemSizeAprox } from '../common/MemSize'
-import { Collection, CollectionItem, CollectionRquest, UpdateCollectionRquest } from '../common/Collection'
+import { Collection, CollectionItem, CollectionRequest, UpdateCollectionRquest } from '../common/Collection'
 
 function SendMessage(messageTitle, messageBody)
 {
@@ -25,7 +25,7 @@ settingsStorage.onchange = function(evt)
 	if (evt.key === "excode") 
 	{
 		Login(evt).then(() => {
-			new User().TaskFolders().All().then( async function<Item, CompressedItem extends CollectionItem>(collection: ApiCollection<Item, CompressedItem>){
+			new User().TaskFolders().Get(0, CollectionRequestSize).then( async function<Item, CompressedItem extends CollectionItem>(collection: ApiCollection<Item, CompressedItem>){
 
 				let compressedCollection = collection.CompressCollection();
 				compressedCollection.count = await collection.Count();
@@ -77,7 +77,7 @@ async function processAllFiles() {
 		if(fileName == 'RequestTasksInFolder' || fileName == "RequestTaskFolders" || fileName == 'UpdateTask')
 		{
 			console.log(payload)
-			let apiRequest: CollectionRquest = JSON.parse(payload)
+			let apiRequest: CollectionRequest = JSON.parse(payload)
 			let user: User = null;
 			try
 			{
@@ -88,7 +88,7 @@ async function processAllFiles() {
 				console.error(err);
 				return;
 			}
-
+			
 			if(apiRequest.entityType == EntityTypes.TasksInFolder)
 			{
 				let collection = user.TasksInFolder(apiRequest.id);
@@ -114,10 +114,21 @@ inbox.addEventListener("newfile", processAllFiles);
 // Also process any files that arrived when the companion wasn’t running
 processAllFiles()
 
-async function HandleApiRequestFromDevice<Item, CompressedItem extends CollectionItem>(apiRequest: CollectionRquest, collection: ApiCollection<Item, CompressedItem>)
+async function HandleApiRequestFromDevice<Item, CompressedItem extends CollectionItem>(apiRequest: CollectionRequest, collection: ApiCollection<Item, CompressedItem>)
 {
 	// make sure we have a good session token
-	EnsureTokenState();
+	try
+	{
+		await EnsureTokenState();
+	}
+	catch(err)
+	{
+		console.error('failed to log in');
+		SendMessage("LoggedOut", "");
+		return;
+	}
+
+	console.log("past the catch");
 
 	if(apiRequest.reqType == RequestTypes.Get)
 	{
@@ -129,7 +140,7 @@ async function HandleApiRequestFromDevice<Item, CompressedItem extends Collectio
 	}
 }
 
-async function HandleApiGetRequests<Item, CompressedItem extends CollectionItem>(apiRequest: CollectionRquest, collection: ApiCollection<Item, CompressedItem>)
+async function HandleApiGetRequests<Item, CompressedItem extends CollectionItem>(apiRequest: CollectionRequest, collection: ApiCollection<Item, CompressedItem>)
 {
 	collection = await collection.Get(apiRequest.skip, apiRequest.top);
 

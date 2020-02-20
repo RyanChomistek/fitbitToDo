@@ -151,6 +151,7 @@ export class User
     {
         let idHashMap = GetIdHashMap();
         let taskFolderId = idHashMap[hashedTaskFolderId];
+        console.log(`IDS hashed:${hashedTaskFolderId}, unhashed ${taskFolderId}`)
         return new TasksInFolderApiCollection(taskFolderId);
     }
 
@@ -227,7 +228,7 @@ async function GetFromApi<Item, CompressedItem extends CollectionItem>(collectio
 	}).then(function(data){
         //console.log('data : ' + JSON.stringify(data))
         //collection.nextUrl = data['@odata.nextLink'];
-
+        
         collection.hasUnsyncedData = data['value'].length > 0;
         var idHashMap = GetIdHashMap();
 

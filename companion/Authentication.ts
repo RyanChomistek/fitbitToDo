@@ -17,11 +17,11 @@ export function HasValidTokenState()
 export async function EnsureTokenState()
 {
 	//console.log(`access token ${settingsStorage.getItem('AccessToken')} ++++++++++++++++++++++++++++++++++++++')`)
-	//console.log(`access token ${settingsStorage.getItem('AccessToken') == undefined} ++++++++++++++++++++++++++++++++++++++')`)
+	//console.log(`access token ${settingsStorage.getItem('AccessToken') == 'undefined'} ++++++++++++++++++++++++++++++++++++++')`)
 	//do we even have a token
-	if(settingsStorage.getItem('AccessToken') == undefined)
+	if(settingsStorage.getItem('AccessToken') == undefined || settingsStorage.getItem('AccessToken') == 'undefined')
 	{
-		//console.log('asdasdasdasdasd++++++++++++++++++++++++++++++++++++++')
+		console.log('asdasdasdasdasd++++++++++++++++++++++++++++++++++++++')
 		throw 'no AccessToken, user has not logged in yet';
 	}
 

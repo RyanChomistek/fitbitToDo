@@ -19,8 +19,8 @@
   </defs>
 
   <svg id="loadingScreen">
-      <use id="spinner" href="#spinner"/>
-      <textarea width="100%-10" height="50%" id="text" class="text" y='175' text-anchor="middle">
+      <use id="spinner" href="#spinner" x='43%' y='10%'/>
+      <textarea width="100%-10" height="70%" id="text" class="text" y='30%' text-anchor="middle" text-length="100">
         Log into Your account in the FitBit App
       </textarea>
   </svg>
@@ -64,8 +64,9 @@
         <use id="checkbox-pool[9]" href="#checkbox-tile-item" class="tile-list-item" />
       </use>
     </use>
+  </svg>
 
-    <use id="LoadMoreBottom" href="#combo-button-lower-right" fill="fb-peach" display="none">
+  <use id="LoadMoreBottom" href="#combo-button-lower-right" fill="fb-peach" display="none">
       <set href="combo-button-icon" attributeName="href" to="images/downloadButton_outline.png"/>
       <set href="combo-button-icon-press" attributeName="href" to="images/downloadButton_filled.png"/>
       <set href="combo-button-stroke" attributeName="display" to="inline"/>
@@ -76,8 +77,6 @@
       <set href="combo-button-icon-press" attributeName="href" to="images/downloadButton_filled_rotated.png"/>
       <set href="combo-button-stroke" attributeName="display" to="inline"/>
     </use>
-
-  </svg>
 
     
 </svg>
