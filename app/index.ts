@@ -111,7 +111,7 @@ NetworkEventHandler.AddEventHandler('LoggedOut', (eventName, fileName) => {
 	PushScreen(loadingScreen);
 });
 
-// Tells the user that they are haivng account problems and need to check their phone
+// Tells the user that they are having account problems and need to check their phone
 NetworkEventHandler.AddEventHandler('LoadingScreenMessage', (eventName, fileName) => {
 	let message = readFileSync(fileName, "cbor");
 	if(GetCurrentScreen() == loadingScreen)
