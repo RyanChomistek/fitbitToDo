@@ -9,21 +9,14 @@ import { Login, User, ApiCollection } from "../companion/TaskApi";
 import { RequestTypes, EntityTypes, CollectionRequestSize } from '../common/constants'
 import { MemSizeAprox } from '../common/MemSize'
 import { Collection, CollectionItem, CollectionRequest, UpdateCollectionRquest } from '../common/Collection'
-
-function SendMessage(messageTitle, messageBody)
-{
-	outbox.enqueue(messageTitle, encode(messageBody)).then((ft) => {
-		console.log(`Transfer of ${ft.name} successfully queued.`);
-	  })
-	  .catch((error) => {
-		console.log(`Failed to queue ${messageTitle}: ${error}`);
-	  })
-}
+import { SendMessage } from "./Communication";
 
 settingsStorage.onchange = function(evt) 
 {
 	if (evt.key === "excode") 
 	{
+		SendMessage("LoadingScreenMessage","Login initiated from companion, attempting to finish authentication");
+
 		Login(evt).then(() => {
 			new User().TaskFolders().Get(0, CollectionRequestSize).then( async function<Item, CompressedItem extends CollectionItem>(collection: ApiCollection<Item, CompressedItem>){
 
@@ -38,6 +31,8 @@ settingsStorage.onchange = function(evt)
 					}).catch((error) => {
 						console.log(`Failed to queue TaskFoldersCollection: ${error}`);
 					})
+			}).catch((err) => {
+				console.error(err);
 			});
 		});
 	} 

@@ -4,6 +4,8 @@ import { localStorage } from "local-storage";
 import { GetToken, EnsureTokenState } from "../companion/Authentication.js";
 import { Collection, CollectionItem, TaskFolderCollectionItem, TaskCollectionItem, TaskFolderCollection, TasksCollection} from '../common/Collection'
 import { HashString } from '../common/Util'
+import { SendMessage } from "./Communication";
+
 export class ApiCollection<Item, CompressedItem extends CollectionItem>
 {
     endpointName: string;
@@ -167,6 +169,8 @@ export async function Login(evt)
 {
     return await GetToken(evt.newValue).catch(function(err){
         console.log('Err: '+ err);
+        SendMessage("LoadingScreenMessage","Failed to authenticate, please try logging in again in the app");
+        throw err;
     });
 }
 
@@ -227,6 +231,11 @@ async function GetFromApi<Item, CompressedItem extends CollectionItem>(collectio
 		return data.json();
 	}).then(function(data){
         //console.log('data : ' + JSON.stringify(data))
+        if(data.error)
+        {
+            throw data.error;
+        }
+
         //collection.nextUrl = data['@odata.nextLink'];
         
         collection.hasUnsyncedData = data['value'].length > 0;
@@ -247,6 +256,9 @@ async function GetFromApi<Item, CompressedItem extends CollectionItem>(collectio
         collection.count = data.length;
 
         return collection;
+    }).catch((err) => {
+        SendMessage("LoadingScreenMessage","Failed to authenticate (Auth Token bad), please try logging in again in the app");
+        throw err;
     });
 }
 
