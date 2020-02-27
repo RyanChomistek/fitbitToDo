@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { CLIENT_ID, SCOPES, AUTHORIZE_URL } from "../common/constants";
+import { CLIENT_ID, CLIENT_SECRET, SCOPES, AUTHORIZE_URL } from "../common/constants";
 
 function HasValidTokenState(props)
 {
@@ -38,9 +38,10 @@ function GetLoginSection(props)
 			status={'Login'}
 			authorizeUrl={AUTHORIZE_URL}
 			clientId={CLIENT_ID}
+			clientSecret={CLIENT_SECRET}
 			scope={SCOPES}
 			onReturn={ async (data) => { 
-				console.log(data.code)
+				console.log(JSON.stringify(data));
 				props.settingsStorage.setItem("excode", data.code) 
 			}}
 		/>
