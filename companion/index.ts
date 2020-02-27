@@ -55,6 +55,11 @@ settingsStorage.onchange = function(evt)
 		console.log(settingsStorage.getItem('ShowCompletedTasks'));
 		SendMessage('ShowCompletedTasks', settingsStorage.getItem('ShowCompletedTasks'));
 	}
+	else if (evt.key === "error")
+	{
+		console.log('index ' + settingsStorage.getItem('error'));
+		SendMessage("LoadingScreenMessage",`Problem with account, Try using a different account. Error code : ${settingsStorage.getItem('error')}`);
+	}
 }
 
 // wait for file input from device

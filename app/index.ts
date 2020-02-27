@@ -116,6 +116,7 @@ NetworkEventHandler.AddEventHandler('LoadingScreenMessage', (eventName, fileName
 	let message = readFileSync(fileName, "cbor");
 	if(GetCurrentScreen() == loadingScreen)
 	{
+		loadingScreen.SetWaitingFor(taskFolderScreen);
 		loadingScreen.SetText(message);
 	}
 });

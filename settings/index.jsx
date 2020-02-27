@@ -41,8 +41,16 @@ function GetLoginSection(props)
 			clientSecret={CLIENT_SECRET}
 			scope={SCOPES}
 			onReturn={ async (data) => { 
-				console.log(JSON.stringify(data));
-				props.settingsStorage.setItem("excode", data.code) 
+				if(data.error)
+				{
+					console.log('settings ' + JSON.stringify(data));
+					props.settingsStorage.setItem("error", data.error);
+				}
+				else
+				{
+					props.settingsStorage.setItem("excode", data.code);
+				}
+				
 			}}
 		/>
 	</Section>
